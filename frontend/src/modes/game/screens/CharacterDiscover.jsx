@@ -202,6 +202,8 @@ const CSS = `
     width: 100%;
     height: 100%;
     object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
     pointer-events: none;
     -webkit-user-drag: none;
   }
@@ -428,31 +430,45 @@ const CSS = `
     to   { opacity: 1; transform: translate(-50%, 0); }
   }
 
-  /* ── Holographic data-bank popup ──────────────────────────── */
+  /* ── Pixelated Holographic data-bank popup ────────────────── */
   .zr-holo {
     position: absolute;
-    right: 22px;
+    right: 24px;
     top: 46%;
     transform: translateY(-50%);
     z-index: 7;
-    width: min(260px, 38vw);
+    width: min(276px, 40vw);
     padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid rgba(110, 230, 255, 0.55);
+    border-radius: 0;
+    border: 2px solid #7eeeff;
     background:
-      linear-gradient(135deg, rgba(40, 180, 230, 0.18), rgba(20, 60, 110, 0.35)),
-      rgba(8, 22, 40, 0.55);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    color: #c8f3ff;
-    font-family: "Consolas", "Courier New", monospace;
+      linear-gradient(
+        135deg,
+        rgba(38, 195, 245, 0.22) 0%,
+        rgba(120, 90, 255, 0.14) 50%,
+        rgba(16, 65, 118, 0.42) 100%
+      ),
+      rgba(6, 20, 38, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #d4f7ff;
+    font-family: "Consolas", "Lucida Console", "Courier New", monospace;
+    image-rendering: pixelated;
     box-shadow:
-      0 0 24px rgba(90, 210, 255, 0.35),
-      inset 0 0 18px rgba(90, 210, 255, 0.12);
+      0 -4px 0 -2px rgba(6, 20, 38, 0.92),
+      0  4px 0 -2px rgba(6, 20, 38, 0.92),
+     -4px 0 0 -2px rgba(6, 20, 38, 0.92),
+      4px 0 0 -2px rgba(6, 20, 38, 0.92),
+      0 -4px 0 0 rgba(95, 224, 255, 0.85),
+      0  4px 0 0 rgba(95, 224, 255, 0.85),
+     -4px 0 0 0 rgba(95, 224, 255, 0.85),
+      4px 0 0 0 rgba(95, 224, 255, 0.85),
+      0 0 28px rgba(80, 220, 255, 0.48),
+      inset 0 0 18px rgba(90, 210, 255, 0.2);
     overflow: hidden;
     opacity: 0;
-    animation: zr-holo-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.35s forwards,
-               zr-holo-flicker 3.6s ease-in-out 1.1s infinite;
+    animation: zr-holo-in 0.48s steps(6, end) 0.35s forwards,
+               zr-holo-flicker 3.2s steps(2, end) 1s infinite;
   }
 
   .zr-holo::before {
@@ -460,13 +476,21 @@ const CSS = `
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(120, 230, 255, 0.06) 0px,
-      rgba(120, 230, 255, 0.06) 1px,
-      transparent 1px,
-      transparent 3px
-    );
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(130, 235, 255, 0.1) 0px,
+        rgba(130, 235, 255, 0.1) 2px,
+        transparent 2px,
+        transparent 4px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(130, 235, 255, 0.05) 0px,
+        rgba(130, 235, 255, 0.05) 2px,
+        transparent 2px,
+        transparent 4px
+      );
     mix-blend-mode: screen;
   }
 
@@ -474,43 +498,56 @@ const CSS = `
     content: "";
     position: absolute;
     top: 0;
-    left: -40%;
-    width: 40%;
+    left: -45%;
+    width: 45%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(180, 240, 255, 0.25), transparent);
-    animation: zr-holo-sweep 2.6s ease-in-out 1.2s infinite;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(140, 245, 255, 0.26),
+      rgba(220, 140, 255, 0.18),
+      transparent
+    );
+    animation: zr-holo-sweep 2.4s steps(14, end) 1.1s infinite;
     pointer-events: none;
   }
 
   .zr-holo-eyebrow {
     font-size: 9px;
-    letter-spacing: 0.32em;
+    font-weight: 700;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(170, 235, 255, 0.75);
+    color: #8ceeff;
+    text-shadow: 0 0 6px rgba(100, 225, 255, 0.7);
     margin-bottom: 6px;
   }
 
   .zr-holo-title {
     font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #e6fbff;
-    text-shadow: 0 0 12px rgba(120, 230, 255, 0.8);
+    color: #eaffff;
+    text-shadow:
+      -1px 0 rgba(255, 90, 210, 0.55),
+       1px 0 rgba(80, 240, 255, 0.85),
+       0 0 10px rgba(120, 230, 255, 0.85);
     margin-bottom: 8px;
   }
 
   .zr-holo-body {
     font-size: 11px;
-    line-height: 1.45;
-    color: rgba(200, 240, 255, 0.85);
+    line-height: 1.5;
+    color: rgba(210, 245, 255, 0.9);
   }
 
   .zr-holo-bar {
     margin-top: 10px;
-    height: 3px;
-    border-radius: 2px;
-    background: rgba(120, 230, 255, 0.15);
+    height: 6px;
+    border-radius: 0;
+    border: 1px solid rgba(120, 230, 255, 0.45);
+    background: rgba(6, 20, 38, 0.65);
+    padding: 1px;
     overflow: hidden;
   }
 
@@ -518,9 +555,15 @@ const CSS = `
     display: block;
     height: 100%;
     width: 100%;
-    background: linear-gradient(90deg, #6fe6ff, #b8f4ff);
+    background: repeating-linear-gradient(
+      90deg,
+      #7ef2ff 0px,
+      #7ef2ff 6px,
+      transparent 6px,
+      transparent 8px
+    );
     box-shadow: 0 0 8px rgba(120, 230, 255, 0.9);
-    animation: zr-holo-progress 1.4s ease-out 0.5s forwards;
+    animation: zr-holo-progress 1.2s steps(12, end) 0.5s forwards;
     transform-origin: left;
     transform: scaleX(0);
   }
@@ -771,7 +814,7 @@ export default function CharacterDiscover({
           <div className="zr-holo-eyebrow">Data bank · sync</div>
           <div className="zr-holo-title">Creature identified</div>
           <div className="zr-holo-body">
-            New specimen catalogued and added to the data bank.
+            <strong>{characterName}</strong> catalogued and added to the data bank.
           </div>
           <div className="zr-holo-bar">
             <span />

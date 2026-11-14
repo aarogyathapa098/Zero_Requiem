@@ -1,4 +1,6 @@
 :root {
+  --zr-cursor-default: url("/cursors/cursor-default.png") 2 2, default;
+  --zr-cursor-pointer: url("/cursors/cursor-pointer.png") 4 2, pointer;
   color-scheme: dark;
   font-family: "Cinzel", Georgia, serif;
   color: #e8f1ff;
@@ -17,6 +19,43 @@ html,
 body,
 #root {
   height: 100%;
+  cursor: var(--zr-cursor-default);
+}
+
+/* Base / non-interactive / disabled surfaces use the pixel arrow cursor */
+*,
+canvas,
+.mars-map,
+.jezero-map-viewport,
+button:disabled,
+.zr-hit:disabled,
+[aria-disabled="true"] {
+  cursor: var(--zr-cursor-default) !important;
+}
+
+/* Interactive elements and active clicks/drags switch to the pixel hand cursor */
+a,
+a *,
+button:not(:disabled):not([aria-disabled="true"]),
+button:not(:disabled):not([aria-disabled="true"]) *,
+[role="button"]:not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]) *,
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="range"]:not(:disabled),
+select:not(:disabled),
+label,
+summary,
+.radar-btn:not([aria-disabled="true"]),
+.radar-btn:not([aria-disabled="true"]) *,
+.zr-hit:not(:disabled),
+.jezero-traverse-toggle,
+.jezero-traverse-toggle *,
+canvas:active,
+.mars-map:active,
+.jezero-map-viewport:active {
+  cursor: var(--zr-cursor-pointer) !important;
 }
 
 body {

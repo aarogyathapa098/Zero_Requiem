@@ -1,4 +1,9 @@
-// TODO: implement the Mars map / mission-select mode.
+import MarsGame from './game/MarsGame.jsx'
+
 export default function MapMode() {
-  return null;
+  const reducedMotion = typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false
+
+  return <MarsGame reducedMotion={reducedMotion} />
 }

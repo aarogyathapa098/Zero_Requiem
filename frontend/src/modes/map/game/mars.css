@@ -1,0 +1,97 @@
+/* ==========================================================================
+   MARS MAP & MINIMAP - CLEAN VIEWPORT
+   ========================================================================== */
+
+.mars-game {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #955f43;
+  color: #f4ebd9;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  font-family: Manrope, sans-serif;
+}
+
+.mars-map {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  outline: none !important;
+}
+
+.mars-map-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(23, 32, 40, 0.05) 40%, rgba(20, 28, 35, 0.45) 100%);
+}
+
+/* ── Minimap Positioned in Top-Left ───────────────────────────────────────── */
+.mars-minimap {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 10;
+  width: 184px;
+  height: 184px;
+  padding: 4px;
+  background: rgba(22, 33, 40, 0.88);
+  border: 2px solid rgba(234, 217, 184, 0.4);
+  border-radius: 50%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), inset 0 0 10px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.mars-minimap canvas {
+  width: 176px;
+  height: 176px;
+  display: block;
+  border-radius: 50%;
+}
+
+@media (max-width: 760px) {
+  .mars-minimap {
+    top: 16px;
+    left: 16px;
+    width: 140px;
+    height: 140px;
+    padding: 3px;
+  }
+  .mars-minimap canvas {
+    width: 134px;
+    height: 134px;
+  }
+}
+
+/* ── Subnautica-Style Vitals HUD in Bottom-Left ───────────────────────────── */
+.mars-vitals-hud {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  z-index: 10;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.75));
+  user-select: none;
+}
+
+@media (max-width: 760px) {
+  .mars-vitals-hud {
+    bottom: 16px;
+    left: 16px;
+    transform: scale(0.8);
+    transform-origin: bottom left;
+  }
+}

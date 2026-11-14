@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import backgroundImg from "../assets/images/background.jpg";
 import characterImg from "../assets/images/characters/1.png";
+import { getCharacterById } from "../data/characters.js";
+import { loadSavedProgress } from "../../map/game/marsModel.js";
 import "./BattleScreen.css";
 
 interface Move {
@@ -186,6 +188,52 @@ const audio = new BattleAudioEngine();
 
 export default function BattleScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Resolve the scanned enemy creature (fighting is allowed after scanning only)
+  const routeState = (location.state as { characterId?: number; slot?: number } | null) ?? null;
+  const paramCharId = searchParams.get("characterId") ?? routeState?.characterId ?? null;
+  const paramSlot = searchParams.get("slot") ?? routeState?.slot ?? null;
+
+  const savedProgress = loadSavedProgress();
+  const scannedSlots: number[] = Array.isArray(savedProgress?.scannedSlots)
+    ? savedProgress.scannedSlots
+    : [];
+  const creatureOrder: number[] = Array.isArray(savedProgress?.creatureOrder)
+    ? savedProgress.creatureOrder
+    : [];
+  const scannedCharIds = scannedSlots
+    .map((slotIdx) => creatureOrder[slotIdx])
+    .filter(Boolean);
+
+  const resolvedEnemyId =
+    paramCharId !== null
+      ? Number(paramCharId)
+      : scannedCharIds[scannedCharIds.length - 1] ?? null;
+
+  const isTargetScanned =
+    resolvedEnemyId !== null &&
+    (scannedCharIds.includes(resolvedEnemyId) ||
+      (paramSlot !== null && scannedSlots.includes(Number(paramSlot))));
+
+  const enemyCreature = getCharacterById(resolvedEnemyId ?? 1);
+  const enemyName = enemyCreature.name;
+  const enemySprite = enemyCreature.character;
+
+  // Enforce fighting only after scanning the respective creature
+  useEffect(() => {
+    if (!isTargetScanned) {
+      if (paramCharId !== null) {
+        const query = new URLSearchParams();
+        query.set("characterId", String(paramCharId));
+        if (paramSlot !== null) query.set("slot", String(paramSlot));
+        navigate(`/scan?${query.toString()}`, { replace: true });
+      } else {
+        navigate("/map", { replace: true });
+      }
+    }
+  }, [isTargetScanned, navigate, paramCharId, paramSlot]);
 
   // Audio state
   const [muted, setMuted] = useState(false);
@@ -207,10 +255,9 @@ export default function BattleScreen() {
     | "fainted_enemy"
     | "fainted_player"
     | "ran"
-    | "message"
   >("intro");
 
-  const [dialogue, setDialogue] = useState("A wild CHRONOS appeared!");
+  const [dialogue, setDialogue] = useState(`A wild ${enemyName} appeared!`);
   const [selectedMoveIndex, setSelectedMoveIndex] = useState(0);
 
   // Animation triggers
@@ -292,7 +339,7 @@ export default function BattleScreen() {
           // Enemy Faints!
           setTimeout(() => {
             setIsEnemyFainted(true);
-            setDialogue("Wild CHRONOS fainted!");
+            setDialogue(`Wild ${enemyName} fainted!`);
             audio.playTone(280, "triangle", 0.4, 0.2, 0.01);
 
             setTimeout(() => {
@@ -304,7 +351,7 @@ export default function BattleScreen() {
         } else {
           // Enemy Retaliation Turn
           setTimeout(() => {
-            setDialogue("Wild CHRONOS used VOID PULSE!");
+            setDialogue(`Wild ${enemyName} used VOID PULSE!`);
             setIsEnemyLunging(true);
             audio.playTone(320, "sawtooth", 0.35, 0.2, 0.01);
 
@@ -345,24 +392,6 @@ export default function BattleScreen() {
     setPhase("ran");
   };
 
-  // Handle Bag & Pokemon (Classic retro dialog messages)
-  const handleBag = () => {
-    audio.playSelect();
-    setDialogue("You opened the BAG. No battle items left in inventory!");
-    setPhase("message");
-  };
-
-  const handlePokemon = () => {
-    audio.playSelect();
-    setDialogue("ECHOSONIC is currently your only sound-type combatant!");
-    setPhase("message");
-  };
-
-  const handleDismissMessage = () => {
-    setDialogue("What will ECHOSONIC do?");
-    setPhase("idle");
-  };
-
   const handleResetBattle = () => {
     setEnemyHp(maxEnemyHp);
     setPlayerHp(maxPlayerHp);
@@ -400,9 +429,9 @@ export default function BattleScreen() {
           <button
             type="button"
             className="top-bar-btn"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/map")}
           >
-            MENU
+            ← MARS MAP
           </button>
         </div>
 
@@ -416,7 +445,7 @@ export default function BattleScreen() {
           <div className="battle-vignette" />
           <div className="battle-scanlines" />
 
-          {/* Enemy Pedestal & Sprite */}
+          {/* Enemy Pedestal & Sprite (Right Enemy matches scanned creature) */}
           <div className="battle-pedestal-enemy" />
           <div
             className={`combatant-enemy ${hasEntered ? "has-entered" : ""} ${
@@ -426,13 +455,13 @@ export default function BattleScreen() {
             }`}
           >
             <img
-              src={characterImg}
-              alt="Wild Chronos"
+              src={enemySprite}
+              alt={`Wild ${enemyName}`}
               className="pokemon-sprite-enemy"
             />
           </div>
 
-          {/* Player Pedestal & Sprite */}
+          {/* Player Pedestal & Sprite (Left Companion always permanent) */}
           <div className="battle-pedestal-player" />
           <div
             className={`combatant-player ${hasEntered ? "has-entered" : ""} ${
@@ -462,7 +491,7 @@ export default function BattleScreen() {
           {/* ── Enemy Status HUD (FireRed Style) ────────────────────────── */}
           <div className="hud-card-enemy">
             <div className="hud-top-row">
-              <span className="hud-name">CHRONOS</span>
+              <span className="hud-name">{enemyName}</span>
               <span className="hud-level">
                 <span className="hud-level-prefix">:L</span>25
               </span>
@@ -513,10 +542,7 @@ export default function BattleScreen() {
         {/* ── Bottom Controls Console (FireRed Dialog & Menu) ───────────── */}
         <div className="battle-console">
           {/* Left: Dialogue Box */}
-          <div
-            className="battle-dialogue-pane"
-            onClick={phase === "message" ? handleDismissMessage : undefined}
-          >
+          <div className="battle-dialogue-pane">
             <div className="battle-dialogue-text">{dialogue}</div>
             <div className="dialogue-arrow">▼</div>
           </div>
@@ -574,7 +600,7 @@ export default function BattleScreen() {
                 </div>
               </>
             ) : (
-              /* 2x2 FireRed Command Box */
+              /* Mars-graded Command Box: Only FIGHT and RUN */
               <div className="command-grid">
                 <button
                   type="button"
@@ -583,22 +609,6 @@ export default function BattleScreen() {
                   onClick={handleOpenFight}
                 >
                   FIGHT
-                </button>
-                <button
-                  type="button"
-                  className="command-btn btn-bag"
-                  disabled={phase !== "idle"}
-                  onClick={handleBag}
-                >
-                  BAG
-                </button>
-                <button
-                  type="button"
-                  className="command-btn btn-pokemon"
-                  disabled={phase !== "idle"}
-                  onClick={handlePokemon}
-                >
-                  POKéMON
                 </button>
                 <button
                   type="button"
@@ -617,7 +627,7 @@ export default function BattleScreen() {
         {phase === "fainted_enemy" && (
           <div className="battle-end-overlay">
             <h2 className="battle-end-title">★ VICTORY! ★</h2>
-            <p>Wild CHRONOS was defeated by your SONIC RESONANCE!</p>
+            <p>Wild {enemyName} was defeated by your SONIC RESONANCE!</p>
             <div className="battle-end-actions">
               <button
                 type="button"
@@ -629,9 +639,9 @@ export default function BattleScreen() {
               <button
                 type="button"
                 className="battle-end-btn"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/map")}
               >
-                MAIN MENU
+                RETURN TO MAP
               </button>
             </div>
           </div>
@@ -654,9 +664,9 @@ export default function BattleScreen() {
               <button
                 type="button"
                 className="battle-end-btn"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/map")}
               >
-                MAIN MENU
+                RETURN TO MAP
               </button>
             </div>
           </div>
@@ -664,10 +674,10 @@ export default function BattleScreen() {
 
         {phase === "ran" && (
           <div className="battle-end-overlay">
-            <h2 className="battle-end-title" style={{ color: "#60a5fa" }}>
+            <h2 className="battle-end-title" style={{ color: "#ffd89a" }}>
               ESCAPED
             </h2>
-            <p>You safely retreated from the encounter.</p>
+            <p>You safely retreated from the {enemyName} encounter.</p>
             <div className="battle-end-actions">
               <button
                 type="button"
@@ -679,9 +689,9 @@ export default function BattleScreen() {
               <button
                 type="button"
                 className="battle-end-btn"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/map")}
               >
-                MAIN MENU
+                RETURN TO MAP
               </button>
             </div>
           </div>

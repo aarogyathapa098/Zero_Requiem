@@ -556,40 +556,41 @@
   display: flex;
 }
 
-/* 2x2 FireRed Command Grid */
+/* 2-Option Command Grid (FIGHT & RUN only, color-graded for Mars game) */
 .command-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 8px;
+  grid-template-rows: 1fr;
+  gap: 12px;
   width: 100%;
   height: 100%;
+  padding: 4px;
 }
 
 .command-btn {
   font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
-  border: 3px solid #181820;
-  border-radius: 6px;
+  font-size: 13px;
+  border: 2px solid rgba(255, 214, 150, 0.72);
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  letter-spacing: 0.5px;
-  transition: transform 0.08s ease, filter 0.15s ease;
+  letter-spacing: 0.1em;
+  transition: transform 0.1s ease, filter 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   position: relative;
-  color: #ffffff;
-  text-shadow: 1px 1px 0px #101018;
+  color: #fff3d6;
+  text-shadow: 0 2px 4px rgba(14, 4, 8, 0.9);
 }
 
 .command-btn:hover:not(:disabled) {
-  filter: brightness(1.15);
-  transform: scale(0.98);
+  filter: brightness(1.12);
+  transform: translateY(-2px);
 }
 
 .command-btn:active:not(:disabled) {
-  transform: scale(0.94);
+  transform: translateY(1px) scale(0.97);
 }
 
 .command-btn:disabled {
@@ -598,23 +599,39 @@
 }
 
 .btn-fight {
-  background: linear-gradient(180deg, #ff5c5c 0%, #d82c2c 100%);
-  box-shadow: inset 0 2px 0 #ffa8a8, 0 3px 0 #781010;
+  background: linear-gradient(180deg, #b84a27 0%, #7d2814 58%, #4e150b 100%);
+  border-color: rgba(255, 208, 132, 0.88);
+  color: #fff2d4;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 168, 0.48),
+    0 4px 0 #2b0a05,
+    0 6px 18px rgba(190, 74, 34, 0.38);
 }
 
-.btn-bag {
-  background: linear-gradient(180deg, #f8b838 0%, #c88018 100%);
-  box-shadow: inset 0 2px 0 #ffe088, 0 3px 0 #784808;
-}
-
-.btn-pokemon {
-  background: linear-gradient(180deg, #50c850 0%, #288828 100%);
-  box-shadow: inset 0 2px 0 #90f090, 0 3px 0 #185018;
+.btn-fight:hover:not(:disabled) {
+  border-color: #ffe2a8;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 192, 0.65),
+    0 4px 0 #2b0a05,
+    0 0 22px rgba(235, 112, 52, 0.58);
 }
 
 .btn-run {
-  background: linear-gradient(180deg, #4888f8 0%, #2858c8 100%);
-  box-shadow: inset 0 2px 0 #90c0ff, 0 3px 0 #103078;
+  background: linear-gradient(180deg, #2d1c22 0%, #1c1016 62%, #12090d 100%);
+  border-color: rgba(238, 206, 156, 0.52);
+  color: #f2dfc0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 175, 0.22),
+    0 4px 0 #0a0407,
+    0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.btn-run:hover:not(:disabled) {
+  border-color: rgba(255, 222, 166, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 190, 0.35),
+    0 4px 0 #0a0407,
+    0 0 18px rgba(255, 192, 110, 0.32);
 }
 
 /* Moves List Submenu */

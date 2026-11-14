@@ -580,12 +580,6 @@ export default function MenuScreen() {
           <button type="button" onClick={handlePlay}>
             Play
           </button>
-          <button type="button" onClick={() => navigate("/map")}>
-            Map
-          </button>
-          <button type="button" onClick={() => navigate("/battle")}>
-            Battle
-          </button>
           <button type="button" onClick={() => setOverlay(ABOUT_OVERLAY)}>
             About
           </button>

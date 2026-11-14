@@ -163,13 +163,23 @@ export default function MarsGame({ reducedMotion = false }) {
   }, [persistCurrentState, showToast])
 
   const enterCreatureScan = useCallback(creature => {
-    if (!creature || creature.scanned || navigatingRef.current) return
+    if (!creature || navigatingRef.current) return
     navigatingRef.current = true
     keys.current.clear()
     walkTarget.current = null
     pendingScanSlot.current = null
     pendingRecordId.current = null
     persistCurrentState()
+    if (creature.scanned) {
+      navigate(`/battle?characterId=${creature.characterId}&slot=${creature.slot}`, {
+        state: {
+          fromMap: true,
+          characterId: creature.characterId,
+          slot: creature.slot,
+        },
+      })
+      return
+    }
     navigate(`/scan?characterId=${creature.characterId}&slot=${creature.slot}`, {
       state: {
         fromMap: true,
@@ -273,7 +283,7 @@ export default function MarsGame({ reducedMotion = false }) {
 
       if (!document.hidden && !navigatingRef.current) {
         if (pendingScanSlot.current !== null) {
-          const targetCreature = creatures.find(c => c.slot === pendingScanSlot.current && !c.scanned)
+          const targetCreature = creatures.find(c => c.slot === pendingScanSlot.current)
           if (targetCreature) {
             walkTarget.current = { x: targetCreature.x, y: targetCreature.y }
           } else {
@@ -304,38 +314,38 @@ export default function MarsGame({ reducedMotion = false }) {
           }
         }
 
-        // 1. Check nearest unscanned creature
-        let closestUnscanned = null
+        // 1. Check nearest creature (prioritize unscanned, or allow fighting already-scanned creature)
+        let closestCreature = null
         let closestDist = Infinity
         for (const creature of creatures) {
-          if (creature.scanned) continue
           const d = distance(game.current.player, creature)
           if (d < closestDist) {
             closestDist = d
-            closestUnscanned = creature
+            closestCreature = creature
           }
         }
-        nearbyCreatureRef.current = closestUnscanned && closestDist <= INTERACT_RANGE
-          ? closestUnscanned
+        nearbyCreatureRef.current = closestCreature && closestDist <= INTERACT_RANGE
+          ? closestCreature
           : null
 
         if (
           pendingScanSlot.current !== null &&
-          closestUnscanned &&
-          closestUnscanned.slot === pendingScanSlot.current &&
+          closestCreature &&
+          closestCreature.slot === pendingScanSlot.current &&
           closestDist <= WALK_TO_SCAN_RANGE
         ) {
-          enterCreatureScan(closestUnscanned)
+          enterCreatureScan(closestCreature)
           return
         }
 
         if (
           moving &&
           now - mountedAt > 750 &&
-          closestUnscanned &&
+          closestCreature &&
+          !closestCreature.scanned &&
           closestDist <= TOUCH_SCAN_RANGE
         ) {
-          enterCreatureScan(closestUnscanned)
+          enterCreatureScan(closestCreature)
           return
         }
 
@@ -542,9 +552,8 @@ export default function MarsGame({ reducedMotion = false }) {
       return
     }
 
-    // 3. Check if player clicked on an unscanned creature silhouette
+    // 3. Check if player clicked on a creature (unscanned -> scan, scanned -> fight)
     const clickedCreature = liveCreatures.current.find(creature => {
-      if (creature.scanned) return false
       const centerX = creature.x
       const centerY = creature.y - 16
       return Math.hypot(clickX - centerX, clickY - centerY) <= 30
@@ -611,7 +620,7 @@ export default function MarsGame({ reducedMotion = false }) {
 
   const allScanned = hudState.scannedCount >= hudState.totalCount
   const activeNearbyCreature = hudState.nearbySlot !== null
-    ? liveCreatures.current.find(c => c.slot === hudState.nearbySlot && !c.scanned)
+    ? liveCreatures.current.find(c => c.slot === hudState.nearbySlot)
     : null
   const activeNearbyRecord = hudState.nearbyRecordId
     ? ROVER_RECORDS.find(r => r.id === hudState.nearbyRecordId)
@@ -709,7 +718,9 @@ export default function MarsGame({ reducedMotion = false }) {
             className="mars-scan-prompt"
             onClick={() => enterCreatureScan(activeNearbyCreature)}
           >
-            ✦ Scan Unknown Creature [E]
+            {activeNearbyCreature.scanned
+              ? `⚔ Fight ${activeNearbyCreature.name} [E]`
+              : '✦ Scan Unknown Creature [E]'}
           </button>
         )}
         {activeNearbyRecord && (

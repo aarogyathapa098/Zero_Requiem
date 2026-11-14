@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MAP_SIZE, movePlayer, newProgress, restoreProgress, SAVE_KEY } from './marsModel'
 import { createTerrain, renderMap, renderMinimap } from './marsRenderer'
 import { windAt } from './marsWeather'
+import { VitalsHUD, Icons } from './VitalsHUD'
 import './mars.css'
 
 const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'])
@@ -27,6 +28,19 @@ export default function MarsGame({ reducedMotion = false }) {
   const camera = useRef({ ...loaded.current.player })
   const wind = useRef(windAt(0))
   const size = useRef({ width: 1000, height: 650, scale: 1, dpr: 1 })
+
+  // ── Survival Vitals State ────────────────────────────────────────────────
+  const vitals = useRef({
+    oxygen: 100,
+    maxOxygen: 100,
+    health: 100,
+    maxHealth: 100,
+    hunger: 100,
+    maxHunger: 100,
+    water: 100,
+    maxWater: 100,
+  })
+  const [vitalsState, setVitalsState] = useState({ ...vitals.current })
 
   useEffect(() => {
     const save = () => {
@@ -109,6 +123,27 @@ export default function MarsGame({ reducedMotion = false }) {
           ...game.current,
           player: moving ? movePlayer(game.current.player, direction, dt, wind.current, 100) : game.current.player,
         }
+
+        // ── Vitals Depletion Simulation ──────────────────────────────────────
+        // 1. Oxygen: Depletes steadily at 1 every 60 seconds (dt / 60)
+        vitals.current.oxygen = Math.max(0, vitals.current.oxygen - dt / 60)
+
+        // 2. Hunger: Depletes steadily over time (1 every 30 seconds)
+        vitals.current.hunger = Math.max(0, vitals.current.hunger - dt / 30)
+
+        // 3. Water: Depletes steadily over time (1 every 20 seconds)
+        vitals.current.water = Math.max(0, vitals.current.water - dt / 20)
+
+        // 4. Health: Proportionally depletes when oxygen drops below 35 (in 30-40 range)
+        let healthDrain = 0
+        if (vitals.current.oxygen < 35) {
+          const o2Deficit = (35 - vitals.current.oxygen) / 35
+          healthDrain += o2Deficit * 1.8 * dt
+        }
+        if (vitals.current.hunger <= 0) healthDrain += 0.5 * dt
+        if (vitals.current.water <= 0) healthDrain += 0.8 * dt
+
+        vitals.current.health = Math.max(0, vitals.current.health - healthDrain)
       }
 
       const { width, height } = size.current
@@ -138,7 +173,7 @@ export default function MarsGame({ reducedMotion = false }) {
         false
       )
 
-      if (now - lastHud > 100) {
+      if (now - lastHud > 120) {
         lastHud = now
         if (minimap.current) {
           renderMinimap(
@@ -152,6 +187,7 @@ export default function MarsGame({ reducedMotion = false }) {
             false
           )
         }
+        setVitalsState({ ...vitals.current })
       }
       frame = requestAnimationFrame(update)
     }
@@ -176,6 +212,13 @@ export default function MarsGame({ reducedMotion = false }) {
       y: Math.max(45, Math.min(MAP_SIZE.height - 45, clickY)),
     }
   }
+
+  // Dynamic Oxygen Ring Color based on remaining O2
+  const o2Color = vitalsState.oxygen > 35
+    ? ['#38ef7d', '#11998e']
+    : vitalsState.oxygen > 18
+    ? ['#f7b733', '#fc4a1a']
+    : ['#ff416c', '#ff4b2b']
 
   return (
     <main
@@ -203,6 +246,44 @@ export default function MarsGame({ reducedMotion = false }) {
           height="180"
           role="img"
           aria-label="Circular local minimap centered on your explorer"
+        />
+      </div>
+
+      {/* Vitals HUD in Bottom Left (Subnautica Style) */}
+      <div className="mars-vitals-hud" aria-label="Explorer Vitals">
+        <VitalsHUD
+          main={{
+            label: 'O₂',
+            value: vitalsState.oxygen,
+            max: vitalsState.maxOxygen,
+            color: o2Color,
+            warnBelow: 0.35,
+          }}
+          satellites={[
+            {
+              value: vitalsState.hunger,
+              max: vitalsState.maxHunger,
+              color: '#f0922e',
+              icon: <Icons.Apple />,
+              warnBelow: 0.25,
+            },
+            {
+              value: vitalsState.health,
+              max: vitalsState.maxHealth,
+              color: '#e0403a',
+              icon: <Icons.Heart />,
+              warnBelow: 0.3,
+            },
+            {
+              value: vitalsState.water,
+              max: vitalsState.maxWater,
+              color: '#3cc0ee',
+              icon: <Icons.Drop />,
+              warnBelow: 0.25,
+            },
+          ]}
+          mainSize={122}
+          satSize={56}
         />
       </div>
     </main>

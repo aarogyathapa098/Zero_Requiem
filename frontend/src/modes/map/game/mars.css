@@ -75,3 +75,23 @@
     height: 134px;
   }
 }
+
+/* ── Subnautica-Style Vitals HUD in Bottom-Left ───────────────────────────── */
+.mars-vitals-hud {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  z-index: 10;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.75));
+  user-select: none;
+}
+
+@media (max-width: 760px) {
+  .mars-vitals-hud {
+    bottom: 16px;
+    left: 16px;
+    transform: scale(0.8);
+    transform-origin: bottom left;
+  }
+}

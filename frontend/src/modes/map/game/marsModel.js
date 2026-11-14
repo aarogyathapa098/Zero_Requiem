@@ -1,12 +1,13 @@
 import { GAME_METERS_PER_UNIT, gameToLonLat, lonLatToGame, straightLineMetres, TRAVERSE_WAYPOINTS } from './marsGeo.js'
 import { getGeologyAt } from '../data/sim3464.js'
 import { PERSEVERANCE_PATH } from './marsTraverse.js'
+import { ROVER_RECORDS, SCRAP_PICKUPS, SUPPLY_PICKUPS } from '../data/roverRecords.js'
 import { CHARACTERS, getCharacterById } from '../../game/data/characters.js'
 
 export const MAP_SIZE = { width: 2400, height: 1800 }
 export const CAMP = { x: 2220, y: 1050 }
 export const START = { x: 2100, y: 1050 }
-export const SAVE_KEY = 'orbital-mars-expedition-v2'
+export const SAVE_KEY = 'orbital-mars-expedition-v3'
 export const SCAN_RANGES = [0, 100, 155, 215]
 export const PERSEVERANCE_ROVER = PERSEVERANCE_PATH.at(-1) || { x: 337, y: 1132 }
 
@@ -72,6 +73,14 @@ function defaultVitals() {
   }
 }
 
+function defaultInventoryCounts() {
+  return {
+    food: 2,
+    water: 2,
+    oxygen: 1,
+  }
+}
+
 const siteStories = [
   { id: 'basalt', name: 'Basalt outcrop', type: 'Rock formation', icon: 'rock', x: 1400, y: 930, color: '#e1ac7e', sample: 'Volcanic rock', fact: 'Some rocks studied by Perseverance in Jezero Crater formed from cooling molten rock. Studying their minerals helps scientists reconstruct the crater’s volcanic history.', source: 'https://www.jpl.nasa.gov/news/nasas-perseverance-makes-new-discoveries-in-mars-jezero-crater/' },
   { id: 'lake', name: 'Ancient lakebed', type: 'Water history', icon: 'lake', x: 1030, y: 720, color: '#acc6bf', sample: 'Lakebed sediment', fact: 'Jezero Crater once contained a lake. Layers of sediment and an ancient river delta preserve clues to the water that shaped this landscape billions of years ago. This site is dry today.', source: 'https://www.nasa.gov/missions/mars-2020-perseverance/perseverance-rover/nasas-perseverance-rover-deciphers-ancient-history-of-martian-lake/' },
@@ -97,8 +106,6 @@ export const SITES = siteStories.map(site => ({
   coordinateSource: 'Cesium SampleData Mars.czml / PerseverancePath',
 }))
 
-// Illustrative EVA budget. Walking time uses straight-line distance because a
-// validated local DEM and traversability grid have not been loaded yet.
 export function planMarswalk(from, destination, returnTo = from) {
   const oneWayMetres = straightLineMetres(from, destination)
   const returnMetres = straightLineMetres(destination, returnTo)
@@ -147,6 +154,10 @@ export function newProgress() {
     trailElapsed: 0,
     roverReached: false,
     vitals: defaultVitals(),
+    collectedScrap: [],
+    collectedRecords: [],
+    collectedSupplies: [],
+    inventoryCounts: defaultInventoryCounts(),
   }
 }
 
@@ -165,13 +176,6 @@ function interpolatePathPoint(floatIndex) {
   }
 }
 
-/**
- * Computes the live state of all 6 scrap-feasting creatures along Perseverance's trail.
- * - Randomized creature identities (`creatureOrder`).
- * - Placed at spaced gaps that move progressively closer to Perseverance Rover,
- *   also creeping gradually closer along the scrap trail as expedition time passes.
- * - Each creature alternates between feasting on rover scrap metal and roaming locally nearby.
- */
 export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
   const order = Array.isArray(progress?.creatureOrder) && progress.creatureOrder.length === CHARACTERS.length
     ? progress.creatureOrder
@@ -190,7 +194,6 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
     if (scanned && scannedAnchors[slot]) {
       anchor = scannedAnchors[slot]
     } else {
-      // Gradually advance along Perseverance's scrap trail over time, staying within this creature's gap
       const maxSteps = site.maxAdvanceIndex - site.pathIndex
       const stepAdvance = Math.min(maxSteps, elapsed * 0.42)
       anchor = interpolatePathPoint(site.pathIndex + stepAdvance)
@@ -199,7 +202,6 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
     const anchorX = Math.max(60, Math.min(MAP_SIZE.width - 60, anchor.x))
     const anchorY = Math.max(60, Math.min(MAP_SIZE.height - 60, anchor.y))
 
-    // Alternate smoothly between feasting on the rover scrap pile and roaming a short radius nearby
     const phase = time * 0.65 + slot * 2.05
     const modeWave = Math.sin(phase * 0.55)
     const feasting = !scanned && (reducedMotion || modeWave > -0.2)
@@ -209,24 +211,21 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
     let facing = slot % 2 === 0 ? -1 : 1
 
     if (reducedMotion) {
-      offsetX = slot % 2 === 0 ? 15 : -15
-      offsetY = 4
+      offsetX = slot % 2 === 0 ? 11 : -11
+      offsetY = 3
       facing = offsetX > 0 ? -1 : 1
     } else if (feasting) {
-      // Stay right beside the scrap metal pile, swaying slightly while nibbling metal fragments
       const side = slot % 2 === 0 ? 1 : -1
-      offsetX = side * (14 + Math.sin(phase * 2.2) * 3.5)
-      offsetY = 4 + Math.cos(phase * 1.9) * 2.5
-      // Face inward toward the scrap pile at (anchorX, anchorY)
+      offsetX = side * (11 + Math.sin(phase * 2.2) * 2.5)
+      offsetY = 3 + Math.cos(phase * 1.9) * 2
       facing = offsetX > 0 ? -1 : 1
     } else {
-      // Roam around a little, not too far (~20-34 units around its scrap site)
-      const roamRadiusX = scanned ? 20 : 32
-      const roamRadiusY = scanned ? 14 : 22
-      offsetX = Math.cos(phase * 0.9) * roamRadiusX + Math.sin(phase * 1.7) * 6
+      const roamRadiusX = scanned ? 15 : 24
+      const roamRadiusY = scanned ? 11 : 16
+      offsetX = Math.cos(phase * 0.9) * roamRadiusX + Math.sin(phase * 1.7) * 4
       offsetY = Math.sin(phase * 1.25) * roamRadiusY
-      const vx = -Math.sin(phase * 0.9) * 0.9 * roamRadiusX + Math.cos(phase * 1.7) * 1.7 * 6
-      if (Math.abs(vx) > 1.2) facing = vx >= 0 ? 1 : -1
+      const vx = -Math.sin(phase * 0.9) * 0.9 * roamRadiusX + Math.cos(phase * 1.7) * 1.7 * 4
+      if (Math.abs(vx) > 1.0) facing = vx >= 0 ? 1 : -1
     }
 
     const x = Math.max(55, Math.min(MAP_SIZE.width - 55, anchorX + offsetX))
@@ -259,7 +258,6 @@ export function getActiveTargetCreature(creatures) {
 }
 
 export function movePlayer(player, direction, seconds, wind = null, suitPower = 100) {
-  // Determine terrain depth penalty based on proximity to known crater centers.
   const craters = [
     { x: 470, y: 1290, r: 185 },
     { x: 1930, y: 1280, r: 255 },
@@ -400,6 +398,27 @@ export function restoreProgress(value) {
     }
     clean.vitals = base
   }
+  const validScrapIds = new Set(SCRAP_PICKUPS.map(s => s.id))
+  if (Array.isArray(value.collectedScrap)) {
+    clean.collectedScrap = [...new Set(value.collectedScrap.filter(id => validScrapIds.has(id)))]
+  }
+  const validRecordIds = new Set(ROVER_RECORDS.map(r => r.id))
+  if (Array.isArray(value.collectedRecords)) {
+    clean.collectedRecords = [...new Set(value.collectedRecords.filter(id => validRecordIds.has(id)))]
+  }
+  const validSupplyIds = new Set(SUPPLY_PICKUPS.map(s => s.id))
+  if (Array.isArray(value.collectedSupplies)) {
+    clean.collectedSupplies = [...new Set(value.collectedSupplies.filter(id => validSupplyIds.has(id)))]
+  }
+  if (value.inventoryCounts && typeof value.inventoryCounts === 'object') {
+    const counts = defaultInventoryCounts()
+    for (const key of ['food', 'water', 'oxygen']) {
+      if (Number.isInteger(value.inventoryCounts[key]) && value.inventoryCounts[key] >= 0) {
+        counts[key] = value.inventoryCounts[key]
+      }
+    }
+    clean.inventoryCounts = counts
+  }
   return clean
 }
 
@@ -445,7 +464,6 @@ export function markCreatureScanned(slot, characterId) {
     targetSlot = current.creatureOrder.indexOf(Number(characterId))
   }
   if (targetSlot < 0 || targetSlot >= SCRAP_TRAIL_SITES.length) return current
-  if (current.scannedSlots.includes(targetSlot)) return current
 
   const liveCreatures = computeMapCreatures(current, 0, true)
   const live = liveCreatures[targetSlot]
@@ -453,10 +471,20 @@ export function markCreatureScanned(slot, characterId) {
     ...current.scannedAnchors,
     ...(live ? { [targetSlot]: { x: live.anchorX, y: live.anchorY } } : {}),
   }
+  const scrapForSlot = SCRAP_PICKUPS.find(item => item.slot === targetSlot)
+  const collectedScrap = scrapForSlot && !current.collectedScrap.includes(scrapForSlot.id)
+    ? [...current.collectedScrap, scrapForSlot.id]
+    : current.collectedScrap
+
+  const scannedSlots = current.scannedSlots.includes(targetSlot)
+    ? current.scannedSlots
+    : [...current.scannedSlots, targetSlot]
+
   const updated = {
     ...current,
-    scannedSlots: [...current.scannedSlots, targetSlot],
+    scannedSlots,
     scannedAnchors,
+    collectedScrap,
     research: current.research + 15,
   }
   return saveSavedProgress(updated)

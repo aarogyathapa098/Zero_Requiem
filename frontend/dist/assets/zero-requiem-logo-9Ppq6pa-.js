@@ -1,0 +1,1 @@
+var e=`/assets/zero-requiem-logo-Byrhq35U.png`;export{e as t};

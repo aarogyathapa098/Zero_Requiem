@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logoUrl from "../../../assets/zero-requiem-logo.png";
 import "./LoadingScreen.css";
 
@@ -10,22 +10,22 @@ const STATUS_STEPS = [
   "Preparing surface insertion",
 ];
 
-/**
- * Placeholder loading screen.
- *
- * TODO: replace the simulated progress with real asset/scene loading and then
- * transition to the game scene (e.g. `navigate("/game", { replace: true })`).
- */
 export default function LoadingScreen() {
+  const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    if (progress >= 100) return;
+    if (progress >= 100) {
+      const timer = window.setTimeout(() => {
+        navigate("/battle", { replace: true });
+      }, 700);
+      return () => window.clearTimeout(timer);
+    }
     const timer = window.setTimeout(() => {
       setProgress((current) => Math.min(100, current + 3 + Math.random() * 8));
     }, 150);
     return () => window.clearTimeout(timer);
-  }, [progress]);
+  }, [progress, navigate]);
 
   const complete = progress >= 100;
   const stepIndex = Math.min(

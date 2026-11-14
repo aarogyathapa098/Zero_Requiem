@@ -1,0 +1,815 @@
+/* ==========================================================================
+   POKÉMON FIRERED STYLE BATTLE SCREEN
+   ========================================================================== */
+
+@keyframes bgDrift {
+  0% { transform: scale(1.05) translate(0, 0); }
+  50% { transform: scale(1.08) translate(-1.5%, -1%); }
+  100% { transform: scale(1.05) translate(0, 0); }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes slideInEnemy {
+  0% { transform: translateX(160%) scale(0.9); opacity: 0; }
+  60% { transform: translateX(-4%) scale(1.02); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes slideInPlayer {
+  0% { transform: translateX(-160%) scale(1.1); opacity: 0; }
+  60% { transform: translateX(4%) scale(1.15); opacity: 1; }
+  100% { transform: translateX(0) scale(1.1); opacity: 1; }
+}
+
+@keyframes slideInHudEnemy {
+  0% { transform: translateX(-140%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInHudPlayer {
+  0% { transform: translateX(140%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes idleBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes idlePlayerBob {
+  0%, 100% { transform: scale(1.1) translateY(0); }
+  50% { transform: scale(1.1) translateY(-5px); }
+}
+
+@keyframes screenWipe {
+  0% { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(0); }
+}
+
+@keyframes blinkArrow {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.2; transform: translateY(3px); }
+}
+
+@keyframes shakeScreen {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-8px, 6px); }
+  40% { transform: translate(8px, -6px); }
+  60% { transform: translate(-6px, -4px); }
+  80% { transform: translate(6px, 4px); }
+}
+
+@keyframes damageFlash {
+  0%, 100% { opacity: 1; filter: none; }
+  20%, 60% { opacity: 0.1; filter: brightness(3) saturate(0.2) drop-shadow(0 0 16px #ff4040); }
+  40%, 80% { opacity: 0.9; filter: brightness(2) drop-shadow(0 0 12px #ff4040); }
+}
+
+@keyframes sonicCharge {
+  0% { transform: scale(1.1) translate(0, 0); filter: brightness(1); }
+  30% { transform: scale(1.05) translate(-10px, 4px); filter: brightness(1.6) drop-shadow(0 0 18px #00e5ff); }
+  60% { transform: scale(1.2) translate(14px, -6px); filter: brightness(2) drop-shadow(0 0 25px #00f0ff); }
+  100% { transform: scale(1.1) translate(0, 0); filter: brightness(1); }
+}
+
+@keyframes sonicPulseWave {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.2) rotate(-20deg);
+    border-width: 8px;
+  }
+  50% {
+    opacity: 1;
+    border-color: #00ffff;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.8) rotate(40deg);
+    border-width: 2px;
+  }
+}
+
+@keyframes sonicBeamLaser {
+  0% {
+    width: 0%;
+    opacity: 0.3;
+  }
+  40% {
+    width: 100%;
+    opacity: 1;
+    filter: drop-shadow(0 0 16px #00ffff) drop-shadow(0 0 28px #3d8bff);
+  }
+  80% {
+    width: 100%;
+    opacity: 0.8;
+  }
+  100% {
+    width: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes enemyLunge {
+  0% { transform: translate(0, 0); }
+  40% { transform: translate(-30px, 20px) scale(1.08); filter: drop-shadow(0 0 12px #ff4081); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes faintDrop {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(90px); opacity: 0; }
+}
+
+/* ── Container Layout ─────────────────────────────────────────────────────── */
+.battle-viewport {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-height: 520px;
+  background: #05060c;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  user-select: none;
+}
+
+.battle-screen {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  height: 100%;
+  max-height: 640px;
+  background: #000;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), inset 0 0 0 4px #2b3040;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+@media (max-width: 960px) {
+  .battle-screen {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+}
+
+/* ── Transitions & Shaking ───────────────────────────────────────────────── */
+.battle-screen.is-shaking {
+  animation: shakeScreen 0.4s ease-in-out;
+}
+
+.battle-intro-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, #ffffff 0%, #101018 70%);
+  z-index: 100;
+  pointer-events: none;
+  animation: screenWipe 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+}
+
+/* ── Background & Ambient ────────────────────────────────────────────────── */
+.battle-arena {
+  position: relative;
+  flex: 1 1 68%;
+  overflow: hidden;
+  background: #000;
+}
+
+.battle-bg-image {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  object-fit: cover;
+  animation: bgDrift 28s ease-in-out infinite alternate;
+  filter: contrast(1.15) brightness(0.9);
+}
+
+.battle-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(10, 15, 30, 0.2) 20%, rgba(0, 0, 0, 0.75) 100%);
+  pointer-events: none;
+}
+
+.battle-scanlines {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+/* ── Platforms / Pedestals (FireRed Battlefield Turf) ─────────────────────── */
+.battle-pedestal-enemy {
+  position: absolute;
+  top: 42%;
+  right: 12%;
+  width: 250px;
+  height: 80px;
+  background: radial-gradient(ellipse at 50% 50%, #445870 0%, #202b3a 65%, rgba(10, 15, 25, 0) 90%);
+  border-radius: 50%;
+  transform: rotateX(55deg);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 0 14px rgba(100, 180, 255, 0.35);
+  border-bottom: 3px solid rgba(80, 150, 240, 0.4);
+}
+
+.battle-pedestal-player {
+  position: absolute;
+  bottom: 10%;
+  left: 8%;
+  width: 320px;
+  height: 110px;
+  background: radial-gradient(ellipse at 50% 50%, #506478 0%, #222d3d 60%, rgba(10, 15, 25, 0) 92%);
+  border-radius: 50%;
+  transform: rotateX(55deg);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.85), inset 0 0 18px rgba(100, 200, 255, 0.4);
+  border-bottom: 4px solid rgba(80, 180, 255, 0.5);
+}
+
+/* ── Combatants (Sprites) ─────────────────────────────────────────────────── */
+.combatant-enemy {
+  position: absolute;
+  top: 14%;
+  right: 15%;
+  width: 190px;
+  height: 190px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  animation: slideInEnemy 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.combatant-enemy.has-entered {
+  animation: idleBob 3.2s ease-in-out infinite;
+}
+
+.combatant-enemy.is-hit {
+  animation: damageFlash 0.6s ease-in-out;
+}
+
+.combatant-enemy.is-lunging {
+  animation: enemyLunge 0.5s cubic-bezier(0.2, 0.8, 0.4, 1);
+}
+
+.combatant-enemy.is-fainted {
+  animation: faintDrop 0.8s ease-in forwards;
+}
+
+.combatant-player {
+  position: absolute;
+  bottom: 8%;
+  left: 12%;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 12;
+  animation: slideInPlayer 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.combatant-player.has-entered {
+  animation: idlePlayerBob 3.5s ease-in-out infinite;
+}
+
+.combatant-player.is-charging {
+  animation: sonicCharge 0.9s ease-in-out;
+}
+
+.combatant-player.is-hit {
+  animation: damageFlash 0.6s ease-in-out;
+}
+
+.combatant-player.is-fainted {
+  animation: faintDrop 0.8s ease-in forwards;
+}
+
+.pokemon-sprite-enemy {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.7));
+}
+
+.pokemon-sprite-player {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* Flip to face the opposing enemy, with friendly battle perspective */
+  transform: scaleX(-1);
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.8)) brightness(0.95);
+}
+
+/* ── Sonic Beam FX ────────────────────────────────────────────────────────── */
+.sonic-fx-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+}
+
+.sonic-beam-line {
+  position: absolute;
+  top: 48%;
+  left: 28%;
+  width: 50%;
+  height: 22px;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.95) 0%, rgba(255, 255, 255, 1) 50%, rgba(0, 240, 255, 0.95) 100%);
+  border-radius: 12px;
+  transform: rotate(-18deg);
+  transform-origin: left center;
+  box-shadow: 0 0 20px #00ffff, 0 0 40px #0088ff;
+  animation: sonicBeamLaser 0.6s ease-out forwards;
+}
+
+.sonic-wave-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 4px solid #00f7ff;
+  box-shadow: 0 0 16px #00e1ff, inset 0 0 14px #00e1ff;
+  animation: sonicPulseWave 0.7s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+.sonic-ring-1 {
+  top: 52%;
+  left: 32%;
+  width: 90px;
+  height: 90px;
+  animation-delay: 0.05s;
+}
+
+.sonic-ring-2 {
+  top: 44%;
+  left: 45%;
+  width: 120px;
+  height: 120px;
+  animation-delay: 0.18s;
+}
+
+.sonic-ring-3 {
+  top: 36%;
+  left: 58%;
+  width: 150px;
+  height: 150px;
+  animation-delay: 0.3s;
+}
+
+.sonic-ring-4 {
+  top: 28%;
+  left: 70%;
+  width: 170px;
+  height: 170px;
+  animation-delay: 0.42s;
+}
+
+/* ── FireRed HUD Badges (Status Boxes) ────────────────────────────────────── */
+.hud-card-enemy {
+  position: absolute;
+  top: 8%;
+  left: 6%;
+  width: 320px;
+  background: #f8f8f8;
+  border: 4px solid #202028;
+  border-radius: 8px 18px 4px 18px;
+  box-shadow: 4px 6px 0px rgba(0, 0, 0, 0.65), inset 2px 2px 0px #ffffff;
+  padding: 10px 14px 12px 14px;
+  z-index: 15;
+  color: #101018;
+  animation: slideInHudEnemy 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hud-card-player {
+  position: absolute;
+  bottom: 34%;
+  right: 6%;
+  width: 330px;
+  background: #f8f8f8;
+  border: 4px solid #202028;
+  border-radius: 18px 8px 18px 4px;
+  box-shadow: 4px 6px 0px rgba(0, 0, 0, 0.65), inset 2px 2px 0px #ffffff;
+  padding: 10px 14px 10px 14px;
+  z-index: 15;
+  color: #101018;
+  animation: slideInHudPlayer 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hud-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.hud-name {
+  font-weight: 700;
+  color: #181820;
+}
+
+.hud-level {
+  font-size: 11px;
+  color: #484850;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-level-prefix {
+  color: #c84020;
+  font-weight: bold;
+}
+
+.hud-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #383840;
+  padding: 4px 6px;
+  border-radius: 12px;
+  border: 2px solid #181820;
+}
+
+.hud-hp-label {
+  color: #f8c830;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: -0.5px;
+}
+
+.hud-hp-bar-track {
+  flex: 1;
+  height: 10px;
+  background: #606068;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #181820;
+}
+
+.hud-hp-bar-fill {
+  height: 100%;
+  transition: width 0.4s ease-out, background-color 0.4s ease;
+  border-radius: 4px;
+}
+
+.hp-green { background: #00c853; }
+.hp-yellow { background: #ffd600; }
+.hp-red { background: #ff1744; }
+
+.hud-hp-numbers {
+  text-align: right;
+  font-size: 10px;
+  margin-top: 5px;
+  color: #282830;
+  font-weight: bold;
+}
+
+.hud-exp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.hud-exp-label {
+  font-size: 8px;
+  color: #2060b0;
+  font-weight: bold;
+}
+
+.hud-exp-track {
+  flex: 1;
+  height: 5px;
+  background: #a8a8b0;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid #202028;
+}
+
+.hud-exp-fill {
+  height: 100%;
+  background: #38a8f8;
+  transition: width 0.5s ease-out;
+}
+
+/* ── Bottom Controls Console (FireRed Menu Area) ──────────────────────────── */
+.battle-console {
+  flex: 0 0 32%;
+  min-height: 160px;
+  background: #283040;
+  border-top: 4px solid #101018;
+  display: flex;
+  position: relative;
+  z-index: 30;
+}
+
+/* Left Dialogue Pane */
+.battle-dialogue-pane {
+  flex: 1 1 56%;
+  background: #f8f8e8;
+  margin: 8px 4px 8px 8px;
+  border-radius: 6px;
+  border: 4px solid #485068;
+  box-shadow: inset 2px 2px 0px #ffffff, inset -2px -2px 0px #c0c0b8, 2px 2px 0px #181820;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  cursor: pointer;
+}
+
+.battle-dialogue-text {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #282828;
+  word-break: break-word;
+}
+
+.dialogue-arrow {
+  align-self: flex-end;
+  color: #e03838;
+  font-size: 14px;
+  animation: blinkArrow 0.8s infinite;
+}
+
+/* Right Command / Moves Menu Pane */
+.battle-menu-pane {
+  flex: 1 1 44%;
+  background: #f8f8e8;
+  margin: 8px 8px 8px 4px;
+  border-radius: 6px;
+  border: 4px solid #485068;
+  box-shadow: inset 2px 2px 0px #ffffff, inset -2px -2px 0px #c0c0b8, 2px 2px 0px #181820;
+  padding: 8px;
+  display: flex;
+}
+
+/* 2x2 FireRed Command Grid */
+.command-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+.command-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  border: 3px solid #181820;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  transition: transform 0.08s ease, filter 0.15s ease;
+  position: relative;
+  color: #ffffff;
+  text-shadow: 1px 1px 0px #101018;
+}
+
+.command-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: scale(0.98);
+}
+
+.command-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.command-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-fight {
+  background: linear-gradient(180deg, #ff5c5c 0%, #d82c2c 100%);
+  box-shadow: inset 0 2px 0 #ffa8a8, 0 3px 0 #781010;
+}
+
+.btn-bag {
+  background: linear-gradient(180deg, #f8b838 0%, #c88018 100%);
+  box-shadow: inset 0 2px 0 #ffe088, 0 3px 0 #784808;
+}
+
+.btn-pokemon {
+  background: linear-gradient(180deg, #50c850 0%, #288828 100%);
+  box-shadow: inset 0 2px 0 #90f090, 0 3px 0 #185018;
+}
+
+.btn-run {
+  background: linear-gradient(180deg, #4888f8 0%, #2858c8 100%);
+  box-shadow: inset 0 2px 0 #90c0ff, 0 3px 0 #103078;
+}
+
+/* Moves List Submenu */
+.moves-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  flex: 1 1 65%;
+  height: 100%;
+}
+
+.move-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  background: #ffffff;
+  color: #181820;
+  border: 2px solid #505060;
+  border-radius: 4px;
+  padding: 6px 4px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 0 #a0a0a8;
+  transition: background 0.1s;
+}
+
+.move-btn:hover:not(:disabled) {
+  background: #e0f0ff;
+  border-color: #0070e0;
+}
+
+.move-btn.is-active {
+  background: #c8e8ff;
+  border-color: #0050c0;
+}
+
+.move-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.move-cursor {
+  color: #d82c2c;
+  font-size: 9px;
+  visibility: hidden;
+}
+
+.move-btn:hover .move-cursor,
+.move-btn.is-active .move-cursor {
+  visibility: visible;
+}
+
+.move-name {
+  font-weight: bold;
+}
+
+.move-info-box {
+  flex: 1 1 35%;
+  background: #e8e8d8;
+  border-left: 2px solid #909088;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #282828;
+}
+
+.move-info-type {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.type-pill-sound {
+  background: #7848f0;
+  color: #fff;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 8px;
+}
+
+.type-pill-normal {
+  background: #909080;
+  color: #fff;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 8px;
+}
+
+.move-info-pp {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.btn-move-cancel {
+  font-family: 'Press Start 2P', monospace;
+  background: #d84040;
+  color: #fff;
+  border: 1px solid #181820;
+  border-radius: 3px;
+  font-size: 8px;
+  padding: 4px;
+  margin-top: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn-move-cancel:hover {
+  background: #f05050;
+}
+
+/* ── Top Utility Bar (Mute & Back) ───────────────────────────────────────── */
+.battle-top-bar {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 10px;
+  z-index: 50;
+}
+
+.top-bar-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  background: rgba(18, 22, 34, 0.85);
+  color: #e0f0ff;
+  border: 2px solid #485878;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.top-bar-btn:hover {
+  background: rgba(30, 42, 68, 0.95);
+  border-color: #6fb6ff;
+  color: #fff;
+}
+
+/* ── Victory / Game Over Overlay ──────────────────────────────────────────── */
+.battle-end-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 20, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  color: #fff;
+  text-align: center;
+  padding: 20px;
+}
+
+.battle-end-title {
+  font-size: 20px;
+  color: #ffd700;
+  text-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+  letter-spacing: 1px;
+}
+
+.battle-end-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.battle-end-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  background: #2050b0;
+  color: #ffffff;
+  border: 3px solid #6090f0;
+  border-radius: 6px;
+  padding: 12px 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #102860;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.battle-end-btn:hover {
+  background: #3068d8;
+  transform: translateY(-2px);
+}
+
+.battle-end-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #102860;
+}

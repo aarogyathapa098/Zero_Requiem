@@ -9,6 +9,7 @@ const MapMode = lazy(() => import("../modes/map/MapMode"));
 const GameMode = lazy(() => import("../modes/game/GameMode"));
 const ScanningScreen = lazy(() => import("../modes/game/screens/ScanningScreen"));
 const CharacterDiscover = lazy(() => import("../modes/game/screens/CharacterDiscover"));
+const BattleScreen = lazy(() => import("../modes/game/screens/BattleScreen"));
 
 export const router = createBrowserRouter([
   { path: "/", element: <Suspense fallback={null}><MenuScreen /></Suspense> },
@@ -18,4 +19,5 @@ export const router = createBrowserRouter([
   { path: "/game", element: <Suspense fallback={null}><GameMode /></Suspense> },
   { path: "/scan", element: <Suspense fallback={null}><ScanningScreen /></Suspense> },
   { path: "/discover", element: <Suspense fallback={null}><CharacterDiscover /></Suspense> },
+  { path: "/battle", element: <Suspense fallback={null}><BattleScreen /></Suspense> },
 ]);

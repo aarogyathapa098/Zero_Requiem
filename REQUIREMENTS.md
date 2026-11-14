@@ -106,7 +106,8 @@ The app will be available at `http://localhost:5173`.
 | `/cutscene` | `CutsceneScreen` | Intro transmission video |
 | `/loading` | `LoadingScreen` | Uplink calibration & loading screen |
 | `/map` | `MapMode` | Mars surface mapping mode |
-| `/game` | `GameMode` | Main game mode |
+| `/game` | `GameMode` | Main game mode (renders BattleScreen) |
+| `/battle` | `BattleScreen` | Pokémon FireRed style battle arena with Sonic Beam |
 | `/scan` | `ScanningScreen` | Character scanning & discovery interaction |
 | `/discover` | `CharacterDiscover` | Bestiary radar discovery scene |
 

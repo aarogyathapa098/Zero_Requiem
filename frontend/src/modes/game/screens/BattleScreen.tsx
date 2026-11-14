@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import backgroundImg from "../assets/images/background.jpg";
 import characterImg from "../assets/images/character.png";
@@ -53,11 +53,141 @@ const MOVES: Move[] = [
   },
 ];
 
+class BattleAudioEngine {
+  private ctx: AudioContext | null = null;
+  public muted = false;
+
+  private getContext(): AudioContext | null {
+    if (!this.ctx && typeof window !== "undefined") {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === "suspended") {
+      void this.ctx.resume();
+    }
+    return this.ctx;
+  }
+
+  playTone(
+    freq: number,
+    type: OscillatorType = "square",
+    duration = 0.15,
+    gainStart = 0.15,
+    gainEnd = 0.01
+  ) {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(gainStart, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(Math.max(gainEnd, 0.0001), ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch {
+      // Audio autoplay policy fallback
+    }
+  }
+
+  playSonicBeam() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.6);
+
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(400, ctx.currentTime);
+      filter.frequency.linearRampToValueAtTime(2400, ctx.currentTime + 0.5);
+      filter.Q.value = 5;
+
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.65);
+    } catch {
+      // Audio fallback
+    }
+  }
+
+  playHit() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const bufferSize = Math.floor(ctx.sampleRate * 0.1);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.sin(i * 12.9898) * 43758.5453) % 2 - 1;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      noise.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start();
+
+      this.playTone(110, "square", 0.18, 0.3, 0.01);
+    } catch {
+      // Audio fallback
+    }
+  }
+
+  playSelect() {
+    this.playTone(660, "square", 0.08, 0.1, 0.01);
+  }
+
+  playRun() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.35);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {
+      // Audio fallback
+    }
+  }
+}
+
+const audio = new BattleAudioEngine();
+
 export default function BattleScreen() {
   const navigate = useNavigate();
 
   // Audio state
-  const audioCtxRef = useRef<AudioContext | null>(null);
   const [muted, setMuted] = useState(false);
 
   // Combatant stats
@@ -94,135 +224,9 @@ export default function BattleScreen() {
   const [isEnemyFainted, setIsEnemyFainted] = useState(false);
   const [isPlayerFainted, setIsPlayerFainted] = useState(false);
 
-  // Audio Helper using Web Audio API
-  const getAudioContext = () => {
-    if (!audioCtxRef.current) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        audioCtxRef.current = new AudioCtx();
-      }
-    }
-    if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
-      void audioCtxRef.current.resume();
-    }
-    return audioCtxRef.current;
-  };
-
-  const playTone = (
-    freq: number,
-    type: OscillatorType = "square",
-    duration = 0.15,
-    gainStart = 0.15,
-    gainEnd = 0.01
-  ) => {
-    if (muted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(gainStart, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(Math.max(gainEnd, 0.0001), ctx.currentTime + duration);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + duration);
-    } catch {
-      // Audio autoplay policy fallback
-    }
-  };
-
-  const playSonicBeamSound = () => {
-    if (muted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(220, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
-      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.6);
-
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(400, ctx.currentTime);
-      filter.frequency.linearRampToValueAtTime(2400, ctx.currentTime + 0.5);
-      filter.Q.value = 5;
-
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.65);
-    } catch {
-      // Ignore audio error
-    }
-  };
-
-  const playHitSound = () => {
-    if (muted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    try {
-      // Noise burst + low square drop
-      const bufferSize = ctx.sampleRate * 0.1;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
-      }
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.25, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-      noise.connect(gain);
-      gain.connect(ctx.destination);
-      noise.start();
-
-      playTone(110, "square", 0.18, 0.3, 0.01);
-    } catch {
-      // Ignore audio error
-    }
-  };
-
-  const playSelectSound = () => playTone(660, "square", 0.08, 0.1, 0.01);
-
-  const playRunSound = () => {
-    if (muted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(200, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.35);
-      gain.gain.setValueAtTime(0.18, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
-    } catch {
-      // Ignore audio error
-    }
-  };
-
   // Initial Entrance Sequence
   useEffect(() => {
-    playTone(440, "triangle", 0.2, 0.15, 0.01);
+    audio.playTone(440, "triangle", 0.2, 0.15, 0.01);
     const enterTimer = setTimeout(() => {
       setHasEntered(true);
       setDialogue("Go, ECHOSONIC!");
@@ -236,9 +240,14 @@ export default function BattleScreen() {
     return () => clearTimeout(enterTimer);
   }, []);
 
+  const toggleMute = () => {
+    audio.muted = !muted;
+    setMuted(!muted);
+  };
+
   // Handle Fight Click
   const handleOpenFight = () => {
-    playSelectSound();
+    audio.playSelect();
     setPhase("moves");
     setSelectedMoveIndex(0);
   };
@@ -248,7 +257,7 @@ export default function BattleScreen() {
     const move = MOVES[moveIndex];
     if (phase !== "moves" || move.pp <= 0) return;
 
-    playSelectSound();
+    audio.playSelect();
     setPhase("player_attacking");
     setDialogue(`ECHOSONIC used ${move.name}!`);
 
@@ -256,10 +265,10 @@ export default function BattleScreen() {
     setIsPlayerCharging(true);
 
     if (move.name === "SONIC BEAM") {
-      playSonicBeamSound();
+      audio.playSonicBeam();
       setIsSonicBeamActive(true);
     } else {
-      playTone(520, "sawtooth", 0.4, 0.2, 0.01);
+      audio.playTone(520, "sawtooth", 0.4, 0.2, 0.01);
     }
 
     setTimeout(() => {
@@ -268,14 +277,14 @@ export default function BattleScreen() {
       setIsSonicBeamActive(false);
       setIsShaking(true);
       setIsEnemyHit(true);
-      playHitSound();
+      audio.playHit();
 
       setTimeout(() => {
         setIsShaking(false);
         setIsEnemyHit(false);
 
         // Calculate damage
-        const damage = Math.round(move.power * 0.45 + (Math.random() * 8));
+        const damage = Math.round(move.power * 0.45 + (Date.now() % 7));
         const newEnemyHp = Math.max(0, enemyHp - damage);
         setEnemyHp(newEnemyHp);
 
@@ -284,7 +293,7 @@ export default function BattleScreen() {
           setTimeout(() => {
             setIsEnemyFainted(true);
             setDialogue("Wild CHRONOS fainted!");
-            playTone(280, "triangle", 0.4, 0.2, 0.01);
+            audio.playTone(280, "triangle", 0.4, 0.2, 0.01);
 
             setTimeout(() => {
               setPlayerExp((exp) => Math.min(100, exp + 45));
@@ -297,15 +306,15 @@ export default function BattleScreen() {
           setTimeout(() => {
             setDialogue("Wild CHRONOS used VOID PULSE!");
             setIsEnemyLunging(true);
-            playTone(320, "sawtooth", 0.35, 0.2, 0.01);
+            audio.playTone(320, "sawtooth", 0.35, 0.2, 0.01);
 
             setTimeout(() => {
               setIsEnemyLunging(false);
               setIsShaking(true);
               setIsPlayerHit(true);
-              playHitSound();
+              audio.playHit();
 
-              const enemyDmg = Math.round(18 + Math.random() * 12);
+              const enemyDmg = Math.round(18 + (Date.now() % 9));
               const newPlayerHp = Math.max(0, playerHp - enemyDmg);
               setPlayerHp(newPlayerHp);
 
@@ -331,20 +340,20 @@ export default function BattleScreen() {
 
   // Handle Run
   const handleRun = () => {
-    playRunSound();
+    audio.playRun();
     setDialogue("Got away safely!");
     setPhase("ran");
   };
 
   // Handle Bag & Pokemon (Classic retro dialog messages)
   const handleBag = () => {
-    playSelectSound();
+    audio.playSelect();
     setDialogue("You opened the BAG. No battle items left in inventory!");
     setPhase("message");
   };
 
   const handlePokemon = () => {
-    playSelectSound();
+    audio.playSelect();
     setDialogue("ECHOSONIC is currently your only sound-type combatant!");
     setPhase("message");
   };
@@ -384,7 +393,7 @@ export default function BattleScreen() {
           <button
             type="button"
             className="top-bar-btn"
-            onClick={() => setMuted((m) => !m)}
+            onClick={toggleMute}
           >
             {muted ? "AUDIO: OFF" : "AUDIO: ON"}
           </button>
@@ -556,7 +565,7 @@ export default function BattleScreen() {
                     type="button"
                     className="btn-move-cancel"
                     onClick={() => {
-                      playSelectSound();
+                      audio.playSelect();
                       setPhase("idle");
                     }}
                   >

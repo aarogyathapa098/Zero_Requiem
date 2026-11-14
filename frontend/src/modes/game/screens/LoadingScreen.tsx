@@ -17,7 +17,7 @@ export default function LoadingScreen() {
   useEffect(() => {
     if (progress >= 100) {
       const timer = window.setTimeout(() => {
-        navigate("/battle", { replace: true });
+        navigate("/map", { replace: true });
       }, 700);
       return () => window.clearTimeout(timer);
     }

@@ -17,21 +17,28 @@
 
 ## Project Structure
 
-All application code is consolidated under the **`frontend`** directory:
+All application code is consolidated cleanly under the **`frontend`** directory:
 
 ```
 Zero_Requiem/
 ├── frontend/
-│   ├── public/                 # Static assets (data, videos, icons)
+│   ├── public/                 # Static assets (data, videos, icons, fonts, jezero imagery)
+│   │   ├── fonts/              # Custom typography (Manrope, Barlow Condensed)
+│   │   ├── jezero/             # Jezero crater relief, geology, and metadata
+│   │   └── videos/             # Intro cinematic cutscene
+│   ├── marsTileProxy.js        # NASA Mars Trek tile proxy middleware for Vite
 │   └── src/
 │       ├── app/                # Router & core app configuration
 │       ├── assets/             # Global image & vector assets
 │       ├── modes/
 │       │   ├── game/           # Game mode: screens, components, systems
-│       │   │   ├── assets/images/   # Character & background sprites
+│       │   │   ├── assets/images/   # Character, background, and silhouette sprites
 │       │   │   ├── components/buttons/  # Reusable UI controls (RadarButton)
-│       │   │   └── screens/         # Screens (Menu, Cutscene, Loading, Scanning, Discover)
-│       │   └── map/            # Map mode: OpenLayers & Three.js visualization
+│       │   │   └── screens/         # Screens (Menu, Cutscene, Loading, Scanning, Discover, Battle)
+│       │   └── map/            # Map mode: Interactive Mars game & regional 2D map
+│       │       ├── components/ # JezeroMap (Regional 2D map with elevation/geology)
+│       │       ├── data/       # HiRISE, MOLA, and Perseverance route coordinates
+│       │       └── game/       # MarsGame (Playable Mars map, minimap, markers, weather)
 │       └── shared/             # Shared types, data, coordinates
 ├── README.md
 └── REQUIREMENTS.md
@@ -41,14 +48,15 @@ Zero_Requiem/
 
 ## Dependencies (`frontend`)
 
-**Stack:** React 19, TypeScript, Vite, Three.js, OpenLayers, Zustand, React Router
+**Stack:** React 19, TypeScript, Vite, Three.js, OpenLayers, Zustand, React Router, Lucide Icons
 
 ### Runtime (`dependencies`)
 | Package | Version | Description |
 |---------|---------|-------------|
-| `react` | ^19.3.1 | UI library |
+| `react` | ^19.3.1 | Core UI library |
 | `react-dom` | ^19.3.1 | DOM renderer for React |
 | `react-router-dom` | ^7.18.5 | Client-side routing |
+| `lucide-react` | ^0.468.0 | Icons for Mars map, navigation, and controls |
 | `three` | ^0.187.0 | 3D rendering for planets & scenes |
 | `ol` (OpenLayers) | ^10.11.0 | Geospatial mapping layer |
 | `zustand` | ^5.1.0 | Client state management |
@@ -93,21 +101,21 @@ The app will be available at `http://localhost:5173`.
 
 | Script | Command | Purpose |
 |--------|---------|---------|
-| Dev | `npm run dev` | Launch local Vite dev server with HMR |
+| Dev | `npm run dev` | Launch local Vite dev server with HMR and Mars tile proxy |
 | Build | `npm run build` | Type-check (`tsc -b`) and build for production (`vite build`) |
 | Preview | `npm run preview` | Locally preview production build |
 | Lint | `npm run lint` | Run ESLint across the codebase |
 
-### Application Routes
+### Game Progression & Routes
 
 | Path | Screen | Description |
 |------|--------|-------------|
 | `/` | `MenuScreen` | Main menu & planetary 3D view |
 | `/cutscene` | `CutsceneScreen` | Intro transmission video |
-| `/loading` | `LoadingScreen` | Uplink calibration & loading screen |
-| `/map` | `MapMode` | Mars surface mapping mode |
-| `/game` | `GameMode` | Main game mode (renders BattleScreen) |
-| `/battle` | `BattleScreen` | Pokémon FireRed style battle arena with Sonic Beam |
+| `/loading` | `LoadingScreen` | Uplink calibration & loading screen (auto-transitions to `/map`) |
+| `/map` | `MapMode` | **Playable Mars game with interactive minimap, markers, weather & regional 2D map** |
+| `/battle` | `BattleScreen` | Pokémon FireRed style battle arena with Sonic Beam & audio synthesizer |
+| `/game` | `GameMode` | Battle mode entry point |
 | `/scan` | `ScanningScreen` | Character scanning & discovery interaction |
 | `/discover` | `CharacterDiscover` | Bestiary radar discovery scene |
 
@@ -116,5 +124,5 @@ The app will be available at `http://localhost:5173`.
 ## Notes
 
 - `node_modules/` and `dist/` are gitignored — always run `npm install` after cloning or pulling.
-- `character-app` has been migrated into `frontend/src/modes/game/`.
-- Component buttons like `RadarButton` reside in `frontend/src/modes/game/components/buttons/`.
+- `character-app` and `map-and-markers-only` have been completely consolidated into `frontend/`.
+- The map mode automatically runs when clicking **Play** from the main menu after the cutscene and calibration loading screen complete.

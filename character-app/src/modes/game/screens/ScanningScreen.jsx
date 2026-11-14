@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import backgroundImg  from "../assets/images/background.jpg";
 import silhouetteImg  from "../assets/images/silhouette.png";
 import characterImg   from "../assets/images/character.png";
+import AstronautRun from "../components/AstronautRun";
 
 // ─── Keyframe injection ────────────────────────────────────────────────────────
 const STYLES = `
@@ -81,7 +82,7 @@ function Particle({ x, y, color }) {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function ScanningScreen() {
+export default function ScanningScreen({ running = true }) {
   const [discovered, setDiscovered] = useState(false);
   const [revealing,  setRevealing]  = useState(false);
   const [particles,  setParticles]  = useState([]);
@@ -176,14 +177,32 @@ export default function ScanningScreen() {
         {/* Revealed phase */}
         {(revealing || discovered) && (
           <div style={{ textAlign: "center" }}>
-            <img src={characterImg} alt="discovered character"
-              className={discovered ? "float-anim" : "reveal-anim"}
-              style={{
-                width: 200, height: 200, objectFit: "contain",
-                userSelect: "none", display: "block", margin: "0 auto",
-                filter: "drop-shadow(0 0 18px rgba(255,220,80,0.7))",
-              }}
-            />
+            {running ? (
+              /* ── Working run model astronaut (astros sprite cycle) ── */
+              <div
+                style={{
+                  width: 200,
+                  height: 200,
+                  display: "grid",
+                  placeItems: "center",
+                  margin: "0 auto",
+                  filter: "drop-shadow(0 0 18px rgba(255,220,80,0.7))",
+                }}
+              >
+                <AstronautRun
+                  style={{ width: "100%", height: "100%", filter: "drop-shadow(0 0 12px rgba(255,220,80,0.7))" }}
+                />
+              </div>
+            ) : (
+              <img src={characterImg} alt="discovered character"
+                className={discovered ? "float-anim" : "reveal-anim"}
+                style={{
+                  width: 200, height: 200, objectFit: "contain",
+                  userSelect: "none", display: "block", margin: "0 auto",
+                  filter: "drop-shadow(0 0 18px rgba(255,220,80,0.7))",
+                }}
+              />
+            )}
             {showName && (
               <div style={{
                 marginTop: 18, padding: "8px 24px", borderRadius: 999,

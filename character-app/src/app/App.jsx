@@ -1,5 +1,5 @@
-import ScanningScreen from '../modes/game/screens/ScanningScreen'
+import RunScreen from '../modes/game/screens/RunScreen'
 
 export default function App() {
-  return <ScanningScreen />
+  return <RunScreen />
 }

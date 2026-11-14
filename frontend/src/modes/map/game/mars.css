@@ -258,29 +258,32 @@
 
 /* ==========================================================================
    HOLOGRAPHIC HORIZONTAL PHONE HUD (Right Side of Screen)
-   Aspect Ratio of 1100x377 media preserved so coded UI aligns inside glass
+   Right handle pushed past the right edge of the screen; coded UI calibrated
+   inside the two inner glass boxes of the 1100x377 media frame.
    ========================================================================== */
 
 .holo-phone-dock {
   position: absolute;
-  right: 8px;
+  right: 0;
   top: 56%;
   transform: translateY(-50%);
   z-index: 15;
   pointer-events: none;
 }
 
-/* Closed state: right handle visible on right side of screen */
+/* Closed state: ONLY the PNG is shown, tucked on the right screen edge */
 .holo-docked-wrap {
   position: relative;
   width: min(560px, 78vw);
   aspect-ratio: 1100 / 377;
+  transform: translateX(5.2%);
   pointer-events: none;
 }
 
 .holo-docked-img {
   width: 100%;
   height: 100%;
+  margin-left: 210px;
   object-fit: contain;
   display: block;
   pointer-events: none;
@@ -290,19 +293,17 @@
 /* Left edge of the docked handle image: clickable trigger */
 .holo-left-edge-trigger {
   position: absolute;
-  right: 0;
-  top: 10%;
-  width: 15.5%;
-  height: 80%;
+  right: 4.5%;
+  top: 11%;
+  width: 13.5%;
+  height: 78%;
   border: 1px solid rgba(90, 232, 255, 0.55);
   border-right: none;
   border-radius: 14px 0 0 14px;
-  background: linear-gradient(
-    90deg,
-    rgba(22, 185, 225, 0.28) 0%,
-    rgba(10, 40, 56, 0.08) 65%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(22, 185, 225, 0.3) 0%,
+      rgba(10, 40, 56, 0.08) 65%,
+      transparent 100%);
   color: #b8f7ff;
   display: flex;
   flex-direction: column;
@@ -343,12 +344,13 @@
   color: #ffffff;
 }
 
-/* Unfolded / Opening Stage */
+/* Unfolded / Opening Stage: pushed 18.6% right so the right handle is off-screen */
 .holo-open-stage {
   display: none;
   position: relative;
-  width: min(820px, 95vw);
+  width: min(940px, 112vw);
   aspect-ratio: 1100 / 377;
+  transform: translateX(18.6%);
   pointer-events: auto;
   filter: drop-shadow(0 16px 38px rgba(0, 0, 0, 0.78));
 }
@@ -368,15 +370,15 @@
 /* Fold button on the left handle */
 .holo-handle-close {
   position: absolute;
-  left: 4.5%;
-  top: 22%;
-  width: 12.5%;
-  height: 56%;
+  left: 5.2%;
+  top: 24%;
+  width: 11.6%;
+  height: 52%;
   border: 1px solid rgba(110, 235, 255, 0.45);
   border-radius: 10px;
   background: rgba(6, 26, 38, 0.55);
   color: #aef6ff;
-  font: 700 9.5px "Consolas", "Courier New", monospace;
+  font: 700 9px "Consolas", "Courier New", monospace;
   letter-spacing: 0.12em;
   cursor: pointer;
   display: flex;
@@ -390,28 +392,29 @@
   border-color: rgba(155, 245, 255, 0.9);
 }
 
-/* ── Coded Hologram OS Inside Left Main Glass Pane (20.8% -> 67.2%) ───────── */
+/* ── Coded Hologram OS Inside Left Inner Box (23.2% -> 60.6%, 24.2% -> 77.0%) ── */
 .holo-glass-main {
   position: absolute;
-  left: 20.8%;
-  top: 15.5%;
-  width: 46.4%;
-  height: 68.5%;
+  left: 23.2%;
+  top: 24.2%;
+  width: 37.4%;
+  height: 52.8%;
   display: flex;
   flex-direction: column;
-  padding: 6px 10px;
+  padding: 5px 8px;
   box-sizing: border-box;
   color: #d6fbff;
   font-family: "Consolas", "Lucida Console", "Courier New", monospace;
   overflow: hidden;
-  animation: holo-ui-fade 0.28s ease-out;
+  animation: holo-ui-fade 0.24s ease-out;
 }
 
 @keyframes holo-ui-fade {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: scale(0.985);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -423,32 +426,34 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding-bottom: 4px;
-  margin-bottom: 5px;
-  border-bottom: 1px solid rgba(100, 230, 255, 0.32);
+  padding-bottom: 3px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(100, 230, 255, 0.28);
   flex-shrink: 0;
 }
 
 .holo-os-brand {
-  font-size: clamp(8px, 0.88vw, 10.5px);
+  font-size: clamp(7.5px, 0.78vw, 9.5px);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: #7cf2ff;
   text-shadow: 0 0 8px rgba(90, 235, 255, 0.65);
+  white-space: nowrap;
 }
 
 .holo-os-coords {
-  font-size: clamp(7.5px, 0.8vw, 9.5px);
-  color: rgba(190, 245, 255, 0.8);
+  font-size: clamp(7px, 0.72vw, 8.8px);
+  color: rgba(190, 245, 255, 0.82);
+  white-space: nowrap;
 }
 
 .holo-back-btn {
-  padding: 2px 8px;
+  padding: 1.5px 7px;
   border: 1px solid rgba(115, 238, 255, 0.6);
   border-radius: 4px;
   background: rgba(12, 58, 78, 0.65);
   color: #dcffff;
-  font: 700 9.5px "Consolas", monospace;
+  font: 700 8.5px "Consolas", monospace;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -457,13 +462,13 @@
   background: rgba(24, 96, 124, 0.85);
 }
 
-/* 6-Category Grid inside the glass */
+/* 6-Category Grid inside the left inner glass box */
 .holo-category-grid {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
   min-height: 0;
 }
 
@@ -472,29 +477,26 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border: 1px solid rgba(95, 228, 255, 0.38);
-  border-radius: 6px;
-  background: linear-gradient(
-    145deg,
-    rgba(20, 96, 126, 0.34) 0%,
-    rgba(8, 34, 48, 0.56) 100%
-  );
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid rgba(95, 228, 255, 0.36);
+  border-radius: 5px;
+  background: linear-gradient(145deg,
+      rgba(20, 96, 126, 0.32) 0%,
+      rgba(8, 34, 48, 0.54) 100%);
   color: #dcfeff;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
   overflow: hidden;
+  min-width: 0;
 }
 
 .holo-category-tile:hover {
   border-color: rgba(150, 248, 255, 0.92);
-  background: linear-gradient(
-    145deg,
-    rgba(32, 136, 174, 0.48) 0%,
-    rgba(12, 52, 72, 0.72) 100%
-  );
+  background: linear-gradient(145deg,
+      rgba(32, 136, 174, 0.48) 0%,
+      rgba(12, 52, 72, 0.72) 100%);
   transform: translateY(-1px);
 }
 
@@ -502,24 +504,33 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   background: rgba(80, 232, 255, 0.16);
   color: #7ef4ff;
+  flex-shrink: 0;
+}
+
+.holo-cat-text {
+  width: 100%;
+  min-width: 0;
 }
 
 .holo-cat-text strong {
   display: block;
-  font-size: clamp(8.5px, 0.95vw, 11px);
-  letter-spacing: 0.06em;
+  font-size: clamp(7.8px, 0.82vw, 9.8px);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #ebffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .holo-cat-text small {
   display: block;
-  font-size: clamp(7px, 0.76vw, 9px);
+  font-size: clamp(6.6px, 0.68vw, 8px);
   color: rgba(176, 238, 252, 0.82);
   white-space: nowrap;
   overflow: hidden;
@@ -530,42 +541,42 @@
 .holo-depth-pane {
   flex: 1;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 3px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
   min-height: 0;
 }
 
 .holo-depth-pane::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .holo-depth-pane::-webkit-scrollbar-thumb {
   background: rgba(105, 232, 255, 0.45);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .holo-sec-title {
   display: block;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #8af4ff;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .holo-supply-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
+  gap: 4px;
 }
 
 .holo-use-btn {
-  padding: 5px 6px;
+  padding: 3px 5px;
   border: 1px solid rgba(110, 234, 255, 0.48);
-  border-radius: 5px;
+  border-radius: 4px;
   background: rgba(14, 62, 82, 0.55);
   color: #e4ffff;
   font-family: inherit;
@@ -585,13 +596,13 @@
 
 .holo-use-btn span {
   display: block;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 700;
 }
 
 .holo-use-btn small {
   display: block;
-  font-size: 8px;
+  font-size: 7.2px;
   color: #96eefc;
 }
 
@@ -599,7 +610,7 @@
 .holo-files-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .holo-scrap-item,
@@ -607,14 +618,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 5px 7px;
-  border-radius: 5px;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
   border: 1px solid rgba(90, 215, 240, 0.25);
   background: rgba(8, 32, 46, 0.55);
   color: rgba(195, 240, 250, 0.72);
   font-family: inherit;
   text-align: left;
+  min-width: 0;
 }
 
 .holo-scrap-item.is-owned,
@@ -635,18 +647,24 @@
 .holo-scrap-item strong,
 .holo-file-info strong {
   display: block;
-  font-size: 9.5px;
+  font-size: 8.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .holo-scrap-item small,
 .holo-file-info small {
   display: block;
-  font-size: 8px;
+  font-size: 7.4px;
   color: rgba(180, 236, 248, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .holo-file-num {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   color: #7ef2ff;
   flex-shrink: 0;
@@ -659,9 +677,9 @@
 
 .holo-scrap-tag,
 .holo-file-action {
-  font-size: 8px;
+  font-size: 7.4px;
   font-weight: 700;
-  padding: 2px 5px;
+  padding: 1.5px 4px;
   border-radius: 3px;
   background: rgba(85, 232, 255, 0.16);
   color: #9bf6ff;
@@ -672,44 +690,52 @@
 .holo-specimen-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
+  gap: 4px;
 }
 
 .holo-vital-card {
-  padding: 6px 8px;
-  border-radius: 5px;
+  padding: 4px 6px;
+  border-radius: 4px;
   border: 1px solid rgba(100, 228, 255, 0.36);
   background: rgba(10, 44, 62, 0.55);
+  min-width: 0;
 }
 
 .holo-vital-card span {
   display: block;
-  font-size: 8px;
+  font-size: 7.2px;
   text-transform: uppercase;
   color: #8ceeff;
 }
 
 .holo-vital-card strong {
   display: block;
-  font-size: 12px;
+  font-size: 10px;
   color: #ffffff;
   margin: 1px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .holo-vital-card small {
   display: block;
-  font-size: 7.5px;
+  font-size: 7px;
   color: rgba(185, 238, 250, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .holo-specimen-card {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border-radius: 5px;
+  gap: 5px;
+  padding: 3px 5px;
+  border-radius: 4px;
   border: 1px solid rgba(95, 220, 245, 0.28);
   background: rgba(8, 34, 48, 0.55);
+  min-width: 0;
 }
 
 .holo-specimen-card.is-scanned {
@@ -718,8 +744,8 @@
 }
 
 .holo-specimen-card img {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   image-rendering: pixelated;
   flex-shrink: 0;
@@ -727,82 +753,87 @@
 
 .holo-specimen-card strong {
   display: block;
-  font-size: 9px;
+  font-size: 8.2px;
   color: #ecffff;
 }
 
 .holo-specimen-card small {
   display: block;
-  font-size: 7.5px;
+  font-size: 7px;
   color: rgba(180, 238, 248, 0.8);
 }
 
-/* ── Coded Hologram OS Inside Right Sub-Pane (68.8% -> 80.5%) ─────────────── */
+/* ── Coded Hologram OS Inside Right Sub-Pane (63.0% -> 75.6%, 24.2% -> 77.0%) ── */
 .holo-glass-side {
   position: absolute;
-  left: 68.8%;
-  top: 16%;
-  width: 11.7%;
-  height: 67.5%;
+  left: 63.0%;
+  top: 24.2%;
+  width: 12.6%;
+  height: 52.8%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 6px 6px;
+  padding: 5px 6px;
   box-sizing: border-box;
   color: #d8fbff;
   font-family: "Consolas", "Lucida Console", "Courier New", monospace;
   overflow: hidden;
-  animation: holo-ui-fade 0.28s ease-out;
+  animation: holo-ui-fade 0.24s ease-out;
 }
 
 .holo-side-clock small {
   display: block;
-  font-size: clamp(6.5px, 0.68vw, 8px);
-  letter-spacing: 0.1em;
+  font-size: clamp(6px, 0.62vw, 7.5px);
+  letter-spacing: 0.08em;
   color: #82eeff;
+  white-space: nowrap;
 }
 
 .holo-side-clock strong {
   display: block;
-  font-size: clamp(8.5px, 0.92vw, 11px);
+  font-size: clamp(8px, 0.86vw, 10.5px);
   color: #ffffff;
   text-shadow: 0 0 6px rgba(95, 238, 255, 0.7);
+  white-space: nowrap;
 }
 
 .holo-side-vitals {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .holo-mini-bar-top {
   display: flex;
   justify-content: space-between;
-  font-size: clamp(6.5px, 0.68vw, 8px);
+  font-size: clamp(6px, 0.64vw, 7.6px);
   color: #caf8ff;
+  line-height: 1.15;
 }
 
 .holo-mini-track {
-  height: 4px;
+  height: 3.5px;
   border-radius: 2px;
   background: rgba(6, 24, 34, 0.78);
   border: 1px solid rgba(100, 228, 255, 0.35);
   overflow: hidden;
 }
 
-.holo-mini-track > span {
+.holo-mini-track>span {
   display: block;
   height: 100%;
 }
 
 .holo-side-counts {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: clamp(6.5px, 0.68vw, 8px);
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: clamp(6px, 0.62vw, 7.5px);
   color: #9ef4ff;
   border-top: 1px solid rgba(95, 226, 255, 0.28);
   padding-top: 3px;
+  white-space: nowrap;
 }
 
 /* ==========================================================================
@@ -836,14 +867,12 @@
   box-shadow:
     0 22px 60px rgba(0, 0, 0, 0.78),
     inset 0 0 42px rgba(112, 72, 36, 0.28);
-  clip-path: polygon(
-    0% 1.5%, 4% 0%, 11% 1.2%, 19% 0.2%, 28% 1.4%, 39% 0%, 48% 1.1%,
-    59% 0.2%, 69% 1.5%, 79% 0.1%, 89% 1.3%, 96% 0%, 100% 2%,
-    99.3% 18%, 100% 35%, 99.1% 54%, 100% 73%, 99.2% 91%, 100% 98.5%,
-    93% 100%, 84% 98.7%, 72% 100%, 61% 98.8%, 49% 100%, 37% 98.6%,
-    25% 100%, 14% 98.8%, 5% 100%, 0% 98.4%,
-    0.7% 81%, 0% 62%, 0.8% 41%, 0% 21%
-  );
+  clip-path: polygon(0% 1.5%, 4% 0%, 11% 1.2%, 19% 0.2%, 28% 1.4%, 39% 0%, 48% 1.1%,
+      59% 0.2%, 69% 1.5%, 79% 0.1%, 89% 1.3%, 96% 0%, 100% 2%,
+      99.3% 18%, 100% 35%, 99.1% 54%, 100% 73%, 99.2% 91%, 100% 98.5%,
+      93% 100%, 84% 98.7%, 72% 100%, 61% 98.8%, 49% 100%, 37% 98.6%,
+      25% 100%, 14% 98.8%, 5% 100%, 0% 98.4%,
+      0.7% 81%, 0% 62%, 0.8% 41%, 0% 21%);
   font-family: Georgia, "Times New Roman", serif;
 }
 
@@ -1019,18 +1048,22 @@
     height: 140px;
     padding: 3px;
   }
+
   .mars-minimap canvas {
     width: 134px;
     height: 134px;
   }
+
   .mars-tracker-hud {
     top: 14px;
     right: 14px;
   }
+
   .mars-tracker-card {
     max-width: 190px;
     padding: 8px 12px;
   }
+
   .rover-record-columns {
     grid-template-columns: 1fr;
   }

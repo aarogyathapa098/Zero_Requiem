@@ -136,7 +136,7 @@ function questDiamond(ctx, x, y, radius, time, reducedMotion) {
   ctx.restore()
 }
 
-export function renderMap(ctx, terrain, state, creatures, camera, size, target, time, moving, reducedMotion, wind, showLandingMarker = true, routeOverview = false) {
+export function renderMap(ctx, terrain, state, creatures, camera, size, target, time, moving, reducedMotion, wind, showLandingMarker = false, routeOverview = false, showSites = false) {
   const { width, height, scale, dpr } = size
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, width, height)
@@ -173,25 +173,26 @@ export function renderMap(ctx, terrain, state, creatures, camera, size, target, 
     ctx.strokeStyle = '#f1dfb6a8'; ctx.lineWidth = 2; ctx.setLineDash([4, 9]); ctx.beginPath(); ctx.moveTo(state.player.x, state.player.y); ctx.lineTo(target.x, target.y); ctx.stroke(); ctx.setLineDash([])
     ctx.strokeStyle = '#f1dfb6'; ctx.beginPath(); ctx.arc(target.x, target.y, 8, 0, Math.PI * 2); ctx.stroke()
   }
-  // Scanner range is measured in synthetic game-map units.
-  ctx.fillStyle = '#fae1a00b'; ctx.strokeStyle = '#ffe2a13b'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(state.player.x, state.player.y, SCAN_RANGES[state.scannerLevel], 0, Math.PI * 2); ctx.fill(); ctx.stroke()
-  for (const site of SITES) pin(ctx, site, state.discoveries.includes(site.id), Math.hypot(site.x - state.player.x, site.y - state.player.y) <= SCAN_RANGES[state.scannerLevel], time)
-  ctx.fillStyle = '#363932'; ctx.fillRect(CAMP.x - 27, CAMP.y - 14, 54, 28)
-  ctx.fillStyle = state.beacon ? '#bbdcb3' : '#b2b5a3'; ctx.fillRect(CAMP.x - 22, CAMP.y - 26, 44, 22)
-  ctx.strokeStyle = '#e9dec0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(CAMP.x, CAMP.y - 26); ctx.lineTo(CAMP.x, CAMP.y - 65); ctx.stroke()
-  ctx.fillStyle = state.beacon ? '#bce7b8' : '#e9b27e'; ctx.beginPath(); ctx.arc(CAMP.x, CAMP.y - 68, 5, 0, Math.PI * 2); ctx.fill()
-  if (state.beacon) { ctx.strokeStyle = '#d6eebd88'; ctx.lineWidth = 1; for (const r of [15, 25, 35]) { ctx.beginPath(); ctx.arc(CAMP.x, CAMP.y - 68, r, -0.9, 0.9); ctx.stroke() } }
-  ctx.font = '600 10px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#f3e4c8'
-  if (showLandingMarker) ctx.fillText(state.beacon ? 'SURVEY BEACON · ONLINE' : 'LANDING CAMP', CAMP.x, CAMP.y + 34)
-  if (showLandingMarker) {
-    ctx.strokeStyle = '#fff4df'; ctx.lineWidth = 3
-    ctx.fillStyle = '#e99a69'; ctx.beginPath(); ctx.arc(CAMP.x, CAMP.y - 53, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
-    ctx.fillStyle = '#26332ee8'; ctx.fillRect(CAMP.x - 67, CAMP.y - 94, 134, 22)
-    ctx.fillStyle = '#fff3dd'; ctx.font = '700 10px Manrope, sans-serif'
-    ctx.fillText('LANDING SITE', CAMP.x, CAMP.y - 79)
+  if (showSites) {
+    ctx.fillStyle = '#fae1a00b'; ctx.strokeStyle = '#ffe2a13b'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(state.player.x, state.player.y, SCAN_RANGES[state.scannerLevel], 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+    for (const site of SITES) pin(ctx, site, state.discoveries.includes(site.id), Math.hypot(site.x - state.player.x, site.y - state.player.y) <= SCAN_RANGES[state.scannerLevel], time)
+    ctx.fillStyle = '#363932'; ctx.fillRect(CAMP.x - 27, CAMP.y - 14, 54, 28)
+    ctx.fillStyle = state.beacon ? '#bbdcb3' : '#b2b5a3'; ctx.fillRect(CAMP.x - 22, CAMP.y - 26, 44, 22)
+    ctx.strokeStyle = '#e9dec0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(CAMP.x, CAMP.y - 26); ctx.lineTo(CAMP.x, CAMP.y - 65); ctx.stroke()
+    ctx.fillStyle = state.beacon ? '#bce7b8' : '#e9b27e'; ctx.beginPath(); ctx.arc(CAMP.x, CAMP.y - 68, 5, 0, Math.PI * 2); ctx.fill()
+    if (state.beacon) { ctx.strokeStyle = '#d6eebd88'; ctx.lineWidth = 1; for (const r of [15, 25, 35]) { ctx.beginPath(); ctx.arc(CAMP.x, CAMP.y - 68, r, -0.9, 0.9); ctx.stroke() } }
+    ctx.font = '600 10px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#f3e4c8'
+    if (showLandingMarker) ctx.fillText(state.beacon ? 'SURVEY BEACON · ONLINE' : 'LANDING CAMP', CAMP.x, CAMP.y + 34)
+    if (showLandingMarker) {
+      ctx.strokeStyle = '#fff4df'; ctx.lineWidth = 3
+      ctx.fillStyle = '#e99a69'; ctx.beginPath(); ctx.arc(CAMP.x, CAMP.y - 53, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+      ctx.fillStyle = '#26332ee8'; ctx.fillRect(CAMP.x - 67, CAMP.y - 94, 134, 22)
+      ctx.fillStyle = '#fff3dd'; ctx.font = '700 10px Manrope, sans-serif'
+      ctx.fillText('LANDING SITE', CAMP.x, CAMP.y - 79)
+    }
+    ctx.textAlign = 'left'
   }
-  ctx.textAlign = 'left'
-  for (const creature of creatures) {
+  for (const creature of (creatures || [])) {
     const species = SPECIES.find(s => s.id === creature.species)
     const bob = reducedMotion ? 0 : Math.sin(time * 2 + creature.x) * 2
     drawSprite(ctx, creature.species, creature.x, creature.y + bob, 3)
@@ -203,12 +204,12 @@ export function renderMap(ctx, terrain, state, creatures, camera, size, target, 
   const rover = PERSEVERANCE_PATH.at(-1)
   const roverX = width / 2 + (rover.x - camera.x) * scale
   const roverY = height / 2 + (rover.y - camera.y) * scale
-  const visible = roverX > 30 && roverX < width - 30 && roverY > 130 && roverY < height - 115
+  const visible = roverX > 30 && roverX < width - 30 && roverY > 30 && roverY < height - 30
   const playerX = width / 2 + (state.player.x - camera.x) * scale
   const playerY = height / 2 + (state.player.y - camera.y) * scale
   const direction = Math.atan2(roverY - playerY, roverX - playerX)
   const markerX = visible ? roverX : Math.max(35, Math.min(width - 35, playerX + Math.cos(direction) * 82))
-  const markerY = visible ? roverY : Math.max(140, Math.min(height - 125, playerY + Math.sin(direction) * 82))
+  const markerY = visible ? roverY : Math.max(35, Math.min(height - 35, playerY + Math.sin(direction) * 82))
   questDiamond(ctx, markerX, markerY, 12, time, reducedMotion)
   ctx.fillStyle = '#16241fe8'; ctx.fillRect(markerX - 57, markerY + 18, 114, 20)
   ctx.fillStyle = '#fff2d9'; ctx.font = '700 10px Manrope, sans-serif'; ctx.textAlign = 'center'
@@ -220,7 +221,7 @@ export function renderMap(ctx, terrain, state, creatures, camera, size, target, 
   }
 }
 
-export function renderMinimap(canvas, terrain, state, creatures, showLandingMarker = true, time = 0, reducedMotion = false) {
+export function renderMinimap(canvas, terrain, state, creatures, showLandingMarker = false, time = 0, reducedMotion = false, showSites = false) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const center = canvas.width / 2, radius = center - 5, scale = .2
@@ -230,8 +231,10 @@ export function renderMinimap(canvas, terrain, state, creatures, showLandingMark
   ctx.fillStyle = '#74513e'; ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.save(); ctx.translate(center, center); ctx.scale(scale, scale); ctx.translate(-state.player.x, -state.player.y); ctx.drawImage(terrain, 0, 0); ctx.restore()
   ctx.fillStyle = '#152a2422'; ctx.fillRect(0, 0, canvas.width, canvas.height)
-  SITES.forEach(site => { const point = at(site); ctx.fillStyle = state.discoveries.includes(site.id) ? '#cce8b5' : '#f4c99d'; ctx.beginPath(); ctx.arc(point.x, point.y, 3, 0, Math.PI * 2); ctx.fill() })
-  creatures.forEach(creature => { const point = at(creature); ctx.fillStyle = '#f1b2ad'; ctx.fillRect(point.x - 2, point.y - 2, 4, 4) })
+  if (showSites) {
+    SITES.forEach(site => { const point = at(site); ctx.fillStyle = state.discoveries.includes(site.id) ? '#cce8b5' : '#f4c99d'; ctx.beginPath(); ctx.arc(point.x, point.y, 3, 0, Math.PI * 2); ctx.fill() })
+  }
+  for (const creature of (creatures || [])) { const point = at(creature); ctx.fillStyle = '#f1b2ad'; ctx.fillRect(point.x - 2, point.y - 2, 4, 4) }
   if (showLandingMarker) {
     const landing = at(CAMP)
     ctx.fillStyle = '#e99a69'; ctx.strokeStyle = '#fff4df'; ctx.lineWidth = 1.5

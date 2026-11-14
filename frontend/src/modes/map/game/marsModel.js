@@ -70,16 +70,40 @@ export function newProgress() {
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
 
 export function movePlayer(player, direction, seconds, wind = null, suitPower = 100) {
-  const length = Math.hypot(direction.x, direction.y)
-  if (!length) return player
-  const alignment = wind ? (direction.x * wind.x + direction.y * wind.y) / length : 0
-  const factor = (wind ? Math.max(0.82, Math.min(1.12, 1 + alignment * wind.strength * 0.16)) : 1) * (suitPower < 5 ? 0.65 : 1)
-  const amount = 165 * factor * Math.max(0, Math.min(seconds, 0.05)) / length
+  // Determine terrain depth penalty based on proximity to known crater centers.
+  // Crater data mirrors the ones drawn in createTerrain (lines 55‑60).
+  const craters = [
+    { x: 470, y: 1290, r: 185 },
+    { x: 1930, y: 1280, r: 255 },
+    { x: 500, y: 650, r: 95 },
+    { x: 1250, y: 1520, r: 85 },
+    { x: 2070, y: 770, r: 90 },
+  ];
+  const depthFactor = (() => {
+    // If player is inside a crater, movement is slower to simulate depth.
+    for (const c of craters) {
+      const dist = Math.hypot(player.x - c.x, player.y - c.y);
+      if (dist < c.r) {
+        // Scale factor from 0.5 at center to 1.0 at rim.
+        const t = dist / c.r; // 0‑1
+        return 0.5 + 0.5 * t; // 0.5‑1.0
+      }
+    }
+    return 1; // flat terrain
+  })();
+
+  const length = Math.hypot(direction.x, direction.y);
+  if (!length) return player;
+  const alignment = wind ? (direction.x * wind.x + direction.y * wind.y) / length : 0;
+  const factor = (wind ? Math.max(0.82, Math.min(1.12, 1 + alignment * wind.strength * 0.16)) : 1) * (suitPower < 5 ? 0.65 : 1) * depthFactor;
+  const amount = 165 * factor * Math.max(0, Math.min(seconds, 0.05)) / length;
   return {
     x: Math.max(45, Math.min(MAP_SIZE.width - 45, player.x + direction.x * amount)),
     y: Math.max(45, Math.min(MAP_SIZE.height - 45, player.y + direction.y * amount)),
-  }
+  };
 }
+
+
 
 export function suitPowerAfter(suitPower, player, direction, wind, seconds) {
   if (!direction.x && !direction.y) return distance(player, CAMP) < 65 ? Math.min(100, suitPower + seconds * 1.5) : suitPower

@@ -1,7 +1,26 @@
 import React, { useState, useEffect } from "react";
-import backgroundImg  from "../assets/images/background.jpg";
-import silhouetteImg  from "../assets/images/silhouette.png";
-import characterImg   from "../assets/images/character.png";
+import backgroundImg from "../assets/images/background.jpg";
+import char1 from "../assets/images/characters/1.png";
+import char2 from "../assets/images/characters/2.png";
+import char3 from "../assets/images/characters/3.png";
+import char4 from "../assets/images/characters/4.png";
+import char5 from "../assets/images/characters/5.png";
+import char6 from "../assets/images/characters/6.png";
+import sil1 from "../assets/images/silhouette/1.1.png";
+import sil2 from "../assets/images/silhouette/2.1.png";
+import sil3 from "../assets/images/silhouette/3.1.png";
+import sil4 from "../assets/images/silhouette/4.1.png";
+import sil5 from "../assets/images/silhouette/5.1.png";
+import sil6 from "../assets/images/silhouette/6.1.png";
+
+export const CHARACTERS = [
+  { id: 1, character: char1, silhouette: sil1 },
+  { id: 2, character: char2, silhouette: sil2 },
+  { id: 3, character: char3, silhouette: sil3 },
+  { id: 4, character: char4, silhouette: sil4 },
+  { id: 5, character: char5, silhouette: sil5 },
+  { id: 6, character: char6, silhouette: sil6 },
+];
 
 // ─── Keyframe injection ────────────────────────────────────────────────────────
 const STYLES = `
@@ -81,11 +100,14 @@ function Particle({ x, y, color }) {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function ScanningScreen() {
+export default function ScanningScreen({ initialIndex = 0 }) {
+  const [index,      setIndex]      = useState(initialIndex % CHARACTERS.length);
   const [discovered, setDiscovered] = useState(false);
   const [revealing,  setRevealing]  = useState(false);
   const [particles,  setParticles]  = useState([]);
   const [showName,   setShowName]   = useState(false);
+
+  const current = CHARACTERS[index];
 
   useEffect(() => {
     const tag = document.createElement("style");
@@ -110,6 +132,15 @@ export default function ScanningScreen() {
     setRevealing(true);
     setTimeout(() => { setDiscovered(true); setRevealing(false); setParticles([]); }, 900);
     setTimeout(() => setShowName(true), 950);
+  };
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    setDiscovered(false);
+    setRevealing(false);
+    setShowName(false);
+    setParticles([]);
+    setIndex((prev) => (prev + 1) % CHARACTERS.length);
   };
 
   return (
@@ -152,12 +183,11 @@ export default function ScanningScreen() {
         {/* Silhouette phase */}
         {!discovered && (
           <div style={{ textAlign: "center" }}>
-            <img src={silhouetteImg} alt="mystery character"
+            <img src={current.silhouette} alt={`mystery character ${current.id}`}
               className={revealing ? "reveal-anim" : "silhouette-shimmer"}
               style={{
                 width: 200, height: 200, objectFit: "contain",
-                filter: "brightness(0)", userSelect: "none",
-                display: "block", margin: "0 auto",
+                userSelect: "none", display: "block", margin: "0 auto",
               }}
             />
             {!revealing && (
@@ -176,7 +206,7 @@ export default function ScanningScreen() {
         {/* Revealed phase */}
         {(revealing || discovered) && (
           <div style={{ textAlign: "center" }}>
-            <img src={characterImg} alt="discovered character"
+            <img src={current.character} alt={`discovered character ${current.id}`}
               className={discovered ? "float-anim" : "reveal-anim"}
               style={{
                 width: 200, height: 200, objectFit: "contain",
@@ -185,14 +215,28 @@ export default function ScanningScreen() {
               }}
             />
             {showName && (
-              <div style={{
-                marginTop: 18, padding: "8px 24px", borderRadius: 999,
-                background: "rgba(255,220,80,0.15)", border: "1.5px solid rgba(255,220,80,0.8)",
-                backdropFilter: "blur(6px)", color: "#FFD950", fontSize: 15,
-                fontWeight: 700, letterSpacing: 2, textTransform: "uppercase",
-                animation: "textFadeIn 0.6s ease-out forwards",
-              }}>
-                ✦ Character Discovered! ✦
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  marginTop: 18, padding: "8px 24px", borderRadius: 999,
+                  background: "rgba(255,220,80,0.15)", border: "1.5px solid rgba(255,220,80,0.8)",
+                  backdropFilter: "blur(6px)", color: "#FFD950", fontSize: 15,
+                  fontWeight: 700, letterSpacing: 2, textTransform: "uppercase",
+                  animation: "textFadeIn 0.6s ease-out forwards",
+                }}>
+                  ✦ Character #{current.id} Discovered! ✦
+                </div>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  style={{
+                    padding: "6px 18px", borderRadius: 999, cursor: "pointer",
+                    background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,220,80,0.6)",
+                    color: "#FFD950", fontSize: 12, letterSpacing: 1.4,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Next Creature ({index + 1}/{CHARACTERS.length}) →
+                </button>
               </div>
             )}
           </div>

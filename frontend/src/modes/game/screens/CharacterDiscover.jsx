@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import backgroundImg from "../assets/images/background.jpg";
-import silhouetteImg from "../assets/images/silhouette.png";
-import characterImg from "../assets/images/character.png";
+import silhouetteImg from "../assets/images/silhouette/1.1.png";
+import characterImg from "../assets/images/characters/1.png";
 import RadarButton from "../components/buttons/RadarButton";
 
 /**

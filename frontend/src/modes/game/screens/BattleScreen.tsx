@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import backgroundImg from "../assets/images/background.jpg";
-import characterImg from "../assets/images/character.png";
+import characterImg from "../assets/images/characters/1.png";
 import "./BattleScreen.css";
 
 interface Move {

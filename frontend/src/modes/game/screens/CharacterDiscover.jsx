@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import backgroundImg from "./background.jpg";
-import silhouetteImg from "./silhouette.png";
-import characterImg from "./character.png";
-import RadarButton from "./RadarButton";
+import backgroundImg from "../assets/images/background.jpg";
+import silhouetteImg from "../assets/images/silhouette.png";
+import characterImg from "../assets/images/character.png";
+import RadarButton from "../components/buttons/RadarButton";
 
 /**
  * CharacterDiscover
@@ -614,7 +614,7 @@ export default function CharacterDiscover({
   silhouetteSrc = silhouetteImg,
   characterSrc = characterImg,
   characterName = "Mystery Creature",
-  onDiscover,
+  onDiscover = () => {},
 }) {
   const [phase, setPhase] = useState("hidden"); // hidden | revealing | revealed
   const [sparks, setSparks] = useState([]);

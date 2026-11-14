@@ -33,6 +33,7 @@ export default function RunScreen() {
   const [pos, setPos] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [isMoving, setIsMoving] = useState(false);
+  const [facing, setFacing] = useState(1); // 1 = right, -1 = left
 
   // Track container size (for movement bounds)
   useEffect(() => {
@@ -51,10 +52,16 @@ export default function RunScreen() {
       const key = e.key.toLowerCase();
       if (["w", "arrowup"].includes(key)) keysRef.current.add("w");
       if (["s", "arrowdown"].includes(key)) keysRef.current.add("s");
-      if (["a", "arrowleft"].includes(key)) keysRef.current.add("a");
-      if (["d", "arrowright"].includes(key)) keysRef.current.add("d");
+      if (["a", "arrowleft"].includes(key)) {
+        keysRef.current.add("a");
+        setFacing(-1);
+      }
+      if (["d", "arrowright"].includes(key)) {
+        keysRef.current.add("d");
+        setFacing(1);
+      }
       if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(e.key)) e.preventDefault();
-      setIsMoving(true);
+      setIsMoving(keysRef.current.size > 0);
     };
     const up = (e) => {
       const key = e.key.toLowerCase();
@@ -64,11 +71,17 @@ export default function RunScreen() {
       if (["d", "arrowright"].includes(key)) keysRef.current.delete("d");
       setIsMoving(keysRef.current.size > 0);
     };
+    const clearKeys = () => {
+      keysRef.current.clear();
+      setIsMoving(false);
+    };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", clearKeys);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", clearKeys);
     };
   }, []);
 
@@ -136,7 +149,7 @@ export default function RunScreen() {
           top: pos.y,
           width: charSize,
           height: charSize,
-          transform: "translate(-50%, -50%)",
+          transform: `translate(-50%, -50%) scaleX(${facing})`,
           zIndex: 3,
           display: "grid",
           placeItems: "center",

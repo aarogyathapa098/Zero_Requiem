@@ -82,6 +82,7 @@ export default function AstronautRun({
           width: "100%",
           height: "100%",
           objectFit: "contain",
+          imageRendering: "pixelated",
           userSelect: "none",
           display: "block",
           // Prevent the browser reflow from intrinsic size changes between frames

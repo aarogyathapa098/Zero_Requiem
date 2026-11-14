@@ -62,6 +62,163 @@
   border-radius: 50%;
 }
 
+/* ── Top-Right Scrap Trail Tracker HUD ────────────────────────────────────── */
+.mars-tracker-hud {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.mars-menu-btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(238, 220, 185, 0.35);
+  background: rgba(20, 28, 34, 0.78);
+  backdrop-filter: blur(8px);
+  color: #f4e8d1;
+  font: 600 11px Manrope, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.mars-menu-btn:hover {
+  border-color: rgba(255, 224, 158, 0.8);
+  background: rgba(34, 44, 52, 0.9);
+}
+
+.mars-tracker-card {
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(242, 214, 166, 0.34);
+  background: rgba(18, 27, 32, 0.84);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.48);
+  text-align: right;
+  pointer-events: none;
+  max-width: 270px;
+}
+
+.mars-tracker-card.is-complete {
+  border-color: rgba(126, 242, 210, 0.55);
+}
+
+.mars-tracker-eyebrow {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f4be72;
+  margin-bottom: 3px;
+}
+
+.mars-tracker-card.is-complete .mars-tracker-eyebrow {
+  color: #7ff0d1;
+}
+
+.mars-tracker-count {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff4df;
+  margin-bottom: 2px;
+}
+
+.mars-tracker-sub {
+  display: block;
+  font-size: 11px;
+  color: rgba(240, 228, 206, 0.8);
+}
+
+/* ── Nearby Creature Scan Prompt ──────────────────────────────────────────── */
+.mars-scan-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 12;
+  padding: 11px 22px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 216, 132, 0.8);
+  background: rgba(28, 14, 18, 0.86);
+  backdrop-filter: blur(8px);
+  color: #ffebc0;
+  font: 700 12px Manrope, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), 0 0 22px rgba(255, 184, 90, 0.3);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.mars-scan-prompt:hover {
+  transform: translateX(-50%) translateY(-2px);
+  background: rgba(46, 20, 26, 0.94);
+}
+
+/* ── Perseverance Reached Banner ──────────────────────────────────────────── */
+.mars-rover-modal {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  transform: translateX(-50%);
+  z-index: 14;
+  padding: 16px 22px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(126, 242, 210, 0.65);
+  background: rgba(14, 28, 30, 0.9);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  max-width: min(440px, 88vw);
+}
+
+.mars-rover-modal strong {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #cafff0;
+  margin-bottom: 5px;
+}
+
+.mars-rover-modal p {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(235, 247, 243, 0.88);
+}
+
+.mars-rover-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mars-rover-actions button {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 240, 212, 0.5);
+  background: rgba(26, 52, 50, 0.8);
+  color: #dcfff5;
+  font: 600 11px Manrope, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.mars-rover-actions button:hover {
+  background: rgba(38, 76, 72, 0.95);
+}
+
 @media (max-width: 760px) {
   .mars-minimap {
     top: 16px;
@@ -73,6 +230,14 @@
   .mars-minimap canvas {
     width: 134px;
     height: 134px;
+  }
+  .mars-tracker-hud {
+    top: 14px;
+    right: 14px;
+  }
+  .mars-tracker-card {
+    max-width: 190px;
+    padding: 8px 12px;
   }
 }
 

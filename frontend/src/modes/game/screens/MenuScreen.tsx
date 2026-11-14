@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import logoUrl from "../../../assets/zero-requiem-logo.png";
 import marsPhotoUrl from "../../../assets/mars-surface.jpg";
+import { resetSavedProgress } from "../../map/game/marsModel.js";
 import "./MenuScreen.css";
 
 interface OverlayContent {
@@ -27,6 +28,7 @@ export default function MenuScreen() {
 
   const handlePlay = () => {
     if (leaving) return;
+    resetSavedProgress();
     setLeaving(true);
     leaveTimerRef.current = window.setTimeout(() => navigate("/cutscene"), 550);
   };

@@ -1,58 +1,88 @@
-import { useEffect, useRef, useState } from 'react'
-import { MAP_SIZE, movePlayer, newProgress, restoreProgress, SAVE_KEY } from './marsModel'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  computeMapCreatures,
+  distance,
+  loadSavedProgress,
+  MAP_SIZE,
+  movePlayer,
+  PERSEVERANCE_ROVER,
+  resetSavedProgress,
+  saveSavedProgress,
+  SCRAP_TRAIL_SITES,
+} from './marsModel'
 import { createTerrain, renderMap, renderMinimap } from './marsRenderer'
 import { windAt } from './marsWeather'
 import { VitalsHUD, Icons } from './VitalsHUD'
 import './mars.css'
 
 const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'])
-let sessionProgress = null
-
-function loadProgress() {
-  let saved
-  try { saved = localStorage.getItem(SAVE_KEY) }
-  catch { return restoreProgress(sessionProgress) }
-  if (sessionProgress) return restoreProgress(sessionProgress)
-  try { return restoreProgress(JSON.parse(saved)) }
-  catch { return newProgress() }
-}
+const INTERACT_RANGE = 88
+const WALK_TO_SCAN_RANGE = 62
+const TOUCH_SCAN_RANGE = 32
 
 export default function MarsGame({ reducedMotion = false }) {
-  const loaded = useRef(loadProgress())
+  const navigate = useNavigate()
+  const loaded = useRef(loadSavedProgress())
   const game = useRef(loaded.current)
   const canvas = useRef(null)
   const minimap = useRef(null)
   const host = useRef(null)
   const keys = useRef(new Set())
   const walkTarget = useRef(null)
+  const pendingScanSlot = useRef(null)
+  const liveCreatures = useRef(computeMapCreatures(loaded.current, 0, reducedMotion))
+  const nearbyCreatureRef = useRef(null)
+  const navigatingRef = useRef(false)
   const camera = useRef({ ...loaded.current.player })
   const wind = useRef(windAt(0))
   const facing = useRef(1)
   const size = useRef({ width: 1000, height: 650, scale: 1, dpr: 1 })
 
   // ── Survival Vitals State ────────────────────────────────────────────────
-  const vitals = useRef({
-    oxygen: 100,
-    maxOxygen: 100,
-    health: 100,
-    maxHealth: 100,
-    hunger: 100,
-    maxHunger: 100,
-    water: 100,
-    maxWater: 100,
-  })
+  const vitals = useRef({ ...loaded.current.vitals })
   const [vitalsState, setVitalsState] = useState({ ...vitals.current })
+  const [hudState, setHudState] = useState(() => ({
+    scannedCount: loaded.current.scannedSlots.length,
+    totalCount: SCRAP_TRAIL_SITES.length,
+    nearbySlot: null,
+    roverReached: loaded.current.roverReached,
+  }))
+  const [dismissedRoverBanner, setDismissedRoverBanner] = useState(false)
+
+  const persistCurrentState = useCallback(() => {
+    game.current = {
+      ...game.current,
+      vitals: { ...vitals.current },
+    }
+    saveSavedProgress(game.current)
+  }, [])
+
+  const enterCreatureScan = useCallback(creature => {
+    if (!creature || creature.scanned || navigatingRef.current) return
+    navigatingRef.current = true
+    keys.current.clear()
+    walkTarget.current = null
+    pendingScanSlot.current = null
+    persistCurrentState()
+    navigate(`/scan?characterId=${creature.characterId}&slot=${creature.slot}`, {
+      state: {
+        fromMap: true,
+        characterId: creature.characterId,
+        slot: creature.slot,
+      },
+    })
+  }, [navigate, persistCurrentState])
 
   useEffect(() => {
-    const save = () => {
-      sessionProgress = game.current
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(game.current)) }
-      catch { /* storage fallback */ }
+    const timer = setInterval(persistCurrentState, 2500)
+    window.addEventListener('pagehide', persistCurrentState)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('pagehide', persistCurrentState)
+      persistCurrentState()
     }
-    const timer = setInterval(save, 3000)
-    window.addEventListener('pagehide', save)
-    return () => { clearInterval(timer); window.removeEventListener('pagehide', save); save() }
-  }, [])
+  }, [persistCurrentState])
 
   useEffect(() => {
     const down = event => {
@@ -62,10 +92,18 @@ export default function MarsGame({ reducedMotion = false }) {
         event.preventDefault()
         keys.current.add(key)
         walkTarget.current = null
+        pendingScanSlot.current = null
+      } else if ((key === 'e' || key === 'enter' || key === ' ') && nearbyCreatureRef.current) {
+        event.preventDefault()
+        enterCreatureScan(nearbyCreatureRef.current)
       }
     }
     const up = event => keys.current.delete(event.key.toLowerCase())
-    const clear = () => { keys.current.clear(); walkTarget.current = null }
+    const clear = () => {
+      keys.current.clear()
+      walkTarget.current = null
+      pendingScanSlot.current = null
+    }
     document.addEventListener('keydown', down)
     document.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
@@ -74,7 +112,7 @@ export default function MarsGame({ reducedMotion = false }) {
       document.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
     }
-  }, [])
+  }, [enterCreatureScan])
 
   useEffect(() => {
     const element = canvas.current
@@ -94,17 +132,36 @@ export default function MarsGame({ reducedMotion = false }) {
     })
     resize.observe(host.current)
 
-    let previous = performance.now()
+    const mountedAt = performance.now()
+    let previous = mountedAt
     let lastHud = 0
     let frame
 
     const update = now => {
       const dt = Math.min((now - previous) / 1000, 0.05)
       previous = now
-      wind.current = windAt(now / 1000)
+      const timeSec = now / 1000
+      wind.current = windAt(timeSec)
       let moving = false
 
-      if (!document.hidden) {
+      if (!document.hidden && !navigatingRef.current) {
+        game.current.trailElapsed = (game.current.trailElapsed || 0) + dt
+      }
+
+      const creatures = computeMapCreatures(game.current, timeSec, reducedMotion)
+      liveCreatures.current = creatures
+
+      if (!document.hidden && !navigatingRef.current) {
+        // Keep walkTarget locked on a clicked roaming creature until arrival
+        if (pendingScanSlot.current !== null) {
+          const targetCreature = creatures.find(c => c.slot === pendingScanSlot.current && !c.scanned)
+          if (targetCreature) {
+            walkTarget.current = { x: targetCreature.x, y: targetCreature.y }
+          } else {
+            pendingScanSlot.current = null
+          }
+        }
+
         const held = keys.current
         let direction = {
           x: Number(held.has('d') || held.has('arrowright')) - Number(held.has('a') || held.has('arrowleft')),
@@ -121,22 +178,64 @@ export default function MarsGame({ reducedMotion = false }) {
         }
         moving = Boolean(direction.x || direction.y)
         if (direction.x !== 0) facing.current = direction.x > 0 ? 1 : -1
-        game.current = {
-          ...game.current,
-          player: moving ? movePlayer(game.current.player, direction, dt, wind.current, 100) : game.current.player,
+        if (moving) {
+          game.current = {
+            ...game.current,
+            player: movePlayer(game.current.player, direction, dt, wind.current, 100),
+          }
+        }
+
+        // Check nearest unscanned creature for interaction
+        let closestUnscanned = null
+        let closestDist = Infinity
+        for (const creature of creatures) {
+          if (creature.scanned) continue
+          const d = distance(game.current.player, creature)
+          if (d < closestDist) {
+            closestDist = d
+            closestUnscanned = creature
+          }
+        }
+
+        nearbyCreatureRef.current = closestUnscanned && closestDist <= INTERACT_RANGE
+          ? closestUnscanned
+          : null
+
+        if (
+          pendingScanSlot.current !== null &&
+          closestUnscanned &&
+          closestUnscanned.slot === pendingScanSlot.current &&
+          closestDist <= WALK_TO_SCAN_RANGE
+        ) {
+          enterCreatureScan(closestUnscanned)
+          return
+        }
+
+        if (
+          moving &&
+          now - mountedAt > 750 &&
+          closestUnscanned &&
+          closestDist <= TOUCH_SCAN_RANGE
+        ) {
+          enterCreatureScan(closestUnscanned)
+          return
+        }
+
+        // Check arrival at Perseverance once all creatures have been scanned
+        if (
+          game.current.scannedSlots.length >= SCRAP_TRAIL_SITES.length &&
+          !game.current.roverReached &&
+          distance(game.current.player, PERSEVERANCE_ROVER) <= 95
+        ) {
+          game.current = { ...game.current, roverReached: true }
+          persistCurrentState()
         }
 
         // ── Vitals Depletion Simulation ──────────────────────────────────────
-        // 1. Oxygen: Depletes steadily at 1 every 60 seconds (dt / 60)
         vitals.current.oxygen = Math.max(0, vitals.current.oxygen - dt / 60)
-
-        // 2. Hunger: Depletes steadily over time (1 every 30 seconds)
         vitals.current.hunger = Math.max(0, vitals.current.hunger - dt / 30)
-
-        // 3. Water: Depletes steadily over time (1 every 20 seconds)
         vitals.current.water = Math.max(0, vitals.current.water - dt / 20)
 
-        // 4. Health: Proportionally depletes when oxygen drops below 35 (in 30-40 range)
         let healthDrain = 0
         if (vitals.current.oxygen < 35) {
           const o2Deficit = (35 - vitals.current.oxygen) / 35
@@ -162,18 +261,19 @@ export default function MarsGame({ reducedMotion = false }) {
         context,
         terrain,
         game.current,
-        [],
+        creatures,
         camera.current,
         size.current,
         walkTarget.current,
-        now / 1000,
+        timeSec,
         moving,
         reducedMotion,
         wind.current,
         false,
         false,
         false,
-        facing.current
+        facing.current,
+        nearbyCreatureRef.current ? nearbyCreatureRef.current.slot : -1
       )
 
       if (now - lastHud > 120) {
@@ -183,14 +283,20 @@ export default function MarsGame({ reducedMotion = false }) {
             minimap.current,
             terrain,
             game.current,
-            [],
+            creatures,
             false,
-            now / 1000,
+            timeSec,
             reducedMotion,
             false
           )
         }
         setVitalsState({ ...vitals.current })
+        setHudState({
+          scannedCount: game.current.scannedSlots.length,
+          totalCount: SCRAP_TRAIL_SITES.length,
+          nearbySlot: nearbyCreatureRef.current ? nearbyCreatureRef.current.slot : null,
+          roverReached: game.current.roverReached,
+        })
       }
       frame = requestAnimationFrame(update)
     }
@@ -202,18 +308,56 @@ export default function MarsGame({ reducedMotion = false }) {
       terrain.width = 0
       terrain.height = 0
     }
-  }, [reducedMotion])
+  }, [enterCreatureScan, persistCurrentState, reducedMotion])
 
   const pointerWalk = event => {
-    if (event.button !== 0) return
+    if (event.button !== 0 || navigatingRef.current) return
     const rect = event.currentTarget.getBoundingClientRect()
     const view = size.current
     const clickX = (event.clientX - rect.left - view.width / 2) / view.scale + camera.current.x
     const clickY = (event.clientY - rect.top - view.height / 2) / view.scale + camera.current.y
+
+    // Check if player clicked on an unscanned creature silhouette
+    const clickedCreature = liveCreatures.current.find(creature => {
+      if (creature.scanned) return false
+      const centerX = creature.x
+      const centerY = creature.y - 24
+      return Math.hypot(clickX - centerX, clickY - centerY) <= 44
+    })
+
+    if (clickedCreature) {
+      if (distance(game.current.player, clickedCreature) <= INTERACT_RANGE) {
+        enterCreatureScan(clickedCreature)
+        return
+      }
+      pendingScanSlot.current = clickedCreature.slot
+      walkTarget.current = { x: clickedCreature.x, y: clickedCreature.y }
+      return
+    }
+
+    pendingScanSlot.current = null
     walkTarget.current = {
       x: Math.max(45, Math.min(MAP_SIZE.width - 45, clickX)),
       y: Math.max(45, Math.min(MAP_SIZE.height - 45, clickY)),
     }
+  }
+
+  const handleNewExpedition = () => {
+    const fresh = resetSavedProgress()
+    game.current = fresh
+    vitals.current = { ...fresh.vitals }
+    camera.current = { ...fresh.player }
+    walkTarget.current = null
+    pendingScanSlot.current = null
+    nearbyCreatureRef.current = null
+    setDismissedRoverBanner(false)
+    setVitalsState({ ...fresh.vitals })
+    setHudState({
+      scannedCount: 0,
+      totalCount: SCRAP_TRAIL_SITES.length,
+      nearbySlot: null,
+      roverReached: false,
+    })
   }
 
   // Dynamic Oxygen Ring Color based on remaining O2
@@ -222,6 +366,11 @@ export default function MarsGame({ reducedMotion = false }) {
     : vitalsState.oxygen > 18
     ? ['#f7b733', '#fc4a1a']
     : ['#ff416c', '#ff4b2b']
+
+  const allScanned = hudState.scannedCount >= hudState.totalCount
+  const activeNearby = hudState.nearbySlot !== null
+    ? liveCreatures.current.find(c => c.slot === hudState.nearbySlot && !c.scanned)
+    : null
 
   return (
     <main
@@ -236,7 +385,7 @@ export default function MarsGame({ reducedMotion = false }) {
         className="mars-map"
         tabIndex={0}
         role="application"
-        aria-label="Mars game map. Use W A S D or arrow keys to move, or click anywhere to walk."
+        aria-label="Mars game map. Use W A S D or arrow keys to move, click creatures or press E near silhouettes eating rover scrap to scan them."
         onPointerDown={pointerWalk}
       />
       <div className="mars-map-shade" aria-hidden="true" />
@@ -248,9 +397,75 @@ export default function MarsGame({ reducedMotion = false }) {
           width="180"
           height="180"
           role="img"
-          aria-label="Circular local minimap centered on your explorer"
+          aria-label="Circular local minimap tracking unknown creatures feeding on rover scrap"
         />
       </div>
+
+      {/* Scrap Trail & Objective HUD in Top Right */}
+      <div className="mars-tracker-hud">
+        <button
+          type="button"
+          className="mars-menu-btn"
+          onClick={() => {
+            persistCurrentState()
+            navigate('/')
+          }}
+        >
+          ← Main Menu
+        </button>
+
+        <div className={`mars-tracker-card${allScanned ? ' is-complete' : ''}`} role="status">
+          <span className="mars-tracker-eyebrow">
+            {allScanned ? 'Scrap Trail Complete' : 'Rover Scrap Signal'}
+          </span>
+          <strong className="mars-tracker-count">
+            Creatures Scanned: {hudState.scannedCount} / {hudState.totalCount}
+          </strong>
+          <span className="mars-tracker-sub">
+            {allScanned
+              ? 'All silhouettes catalogued · Head to Perseverance Rover'
+              : 'Track unknown silhouettes feasting on Perseverance scrap'}
+          </span>
+        </div>
+      </div>
+
+      {/* Interactive Scan Prompt when near an unscanned creature */}
+      {activeNearby && (
+        <button
+          type="button"
+          className="mars-scan-prompt"
+          onClick={() => enterCreatureScan(activeNearby)}
+        >
+          ✦ Scan Unknown Creature [E]
+        </button>
+      )}
+
+      {/* Arrival Banner at Perseverance Rover once all creatures are scanned */}
+      {allScanned && hudState.roverReached && !dismissedRoverBanner && (
+        <div className="mars-rover-modal" role="dialog" aria-label="Perseverance rover reached">
+          <strong>★ Perseverance Rover Located</strong>
+          <p>
+            You followed the trail of eaten scrap metal and catalogued all {hudState.totalCount} mysterious specimens leading to Perseverance!
+          </p>
+          <div className="mars-rover-actions">
+            <button type="button" onClick={() => setDismissedRoverBanner(true)}>
+              Keep Exploring
+            </button>
+            <button type="button" onClick={handleNewExpedition}>
+              New Randomized Trail
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                persistCurrentState()
+                navigate('/battle')
+              }}
+            >
+              Battle Mode →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Vitals HUD in Bottom Left (Subnautica Style) */}
       <div className="mars-vitals-hud" aria-label="Explorer Vitals">

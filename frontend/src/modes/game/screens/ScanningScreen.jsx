@@ -61,7 +61,7 @@ export default function ScanningScreen({ initialIndex = 0 }) {
             fontSize: 12,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            cursor: "pointer",
+            cursor: "var(--zr-cursor-pointer)",
           }}
         >
           Next Creature ({index + 1}/{CHARACTERS.length}) →

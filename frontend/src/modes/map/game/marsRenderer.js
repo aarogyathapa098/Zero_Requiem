@@ -1,5 +1,22 @@
 import { CAMP, MAP_SIZE, SCAN_RANGES, SITES, SPECIES } from './marsModel'
 import { PERSEVERANCE_PATH } from './marsTraverse.js'
+import astroIdleSrc from '../../game/assets/sprites/astros/idle1.png'
+import astroRun1Src from '../../game/assets/sprites/astros/run1.png'
+import astroRun2Src from '../../game/assets/sprites/astros/run2.png'
+import astroRun3Src from '../../game/assets/sprites/astros/run3.png'
+import astroRun4Src from '../../game/assets/sprites/astros/run4.png'
+import astroRun5Src from '../../game/assets/sprites/astros/run5.png'
+import astroRun6Src from '../../game/assets/sprites/astros/run6.png'
+
+function loadSprite(src) {
+  if (typeof Image === 'undefined') return null
+  const img = new Image()
+  img.src = src
+  return img
+}
+
+const astroIdleImg = loadSprite(astroIdleSrc)
+const astroRunImgs = [astroRun1Src, astroRun2Src, astroRun3Src, astroRun4Src, astroRun5Src, astroRun6Src].map(loadSprite)
 
 function randomSeed(seed = 2708) {
   return () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 }
@@ -86,7 +103,27 @@ const creatures = {
   glimmer: ['....L.....','...LCL....','..LCCCL...','.DCCCCCD..','DCCCCCCCD.','.CBCCBCC..','..CCCCCC..','...DCCD...','..DD..DD..'],
 }
 
-export function drawSprite(ctx, kind, x, y, scale = 3, moving = false, time = 0) {
+export function drawSprite(ctx, kind, x, y, scale = 3, moving = false, time = 0, facing = 1) {
+  if (kind === 'astronaut') {
+    const frameImg = moving
+      ? astroRunImgs[Math.floor(time * 12) % astroRunImgs.length]
+      : astroIdleImg
+    if (frameImg && frameImg.complete && frameImg.naturalWidth > 0) {
+      const drawHeight = 18 * scale
+      const drawWidth = drawHeight * (frameImg.naturalWidth / frameImg.naturalHeight)
+      ctx.fillStyle = '#332b2745'
+      ctx.beginPath()
+      ctx.ellipse(x + 2, y + 4, drawWidth * 0.34, 5, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.save()
+      ctx.imageSmoothingEnabled = false
+      ctx.translate(Math.round(x), Math.round(y))
+      ctx.scale(facing < 0 ? -1 : 1, 1)
+      ctx.drawImage(frameImg, -drawWidth / 2, -drawHeight, drawWidth, drawHeight)
+      ctx.restore()
+      return
+    }
+  }
   const rows = kind === 'astronaut' ? astronaut : creatures[kind] || creatures.dustling
   const species = SPECIES.find(s => s.id === kind)
   const palette = { W: '#ebe8d9', L: '#e1dec8', V: '#304c61', O: '#dc8c57', H: '#899b9a', D: species?.dark || '#464b4d', C: species?.color || '#d4b682', B: '#253541' }
@@ -136,7 +173,7 @@ function questDiamond(ctx, x, y, radius, time, reducedMotion) {
   ctx.restore()
 }
 
-export function renderMap(ctx, terrain, state, creatures, camera, size, target, time, moving, reducedMotion, wind, showLandingMarker = false, routeOverview = false, showSites = false) {
+export function renderMap(ctx, terrain, state, creatures, camera, size, target, time, moving, reducedMotion, wind, showLandingMarker = false, routeOverview = false, showSites = false, facing = 1) {
   const { width, height, scale, dpr } = size
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, width, height)
@@ -199,7 +236,7 @@ export function renderMap(ctx, terrain, state, creatures, camera, size, target, 
     ctx.fillStyle = '#352d27d9'; ctx.fillRect(creature.x - 33, creature.y + 12, 66, 18)
     ctx.fillStyle = species.color; ctx.font = '600 9px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(species.name, creature.x, creature.y + 25); ctx.textAlign = 'left'
   }
-  drawSprite(ctx, 'astronaut', state.player.x, state.player.y, 3, moving && !reducedMotion, time)
+  drawSprite(ctx, 'astronaut', state.player.x, state.player.y, 3, moving && !reducedMotion, time, facing)
   ctx.restore()
   const rover = PERSEVERANCE_PATH.at(-1)
   const roverX = width / 2 + (rover.x - camera.x) * scale

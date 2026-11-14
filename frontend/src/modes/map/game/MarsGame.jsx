@@ -27,6 +27,7 @@ export default function MarsGame({ reducedMotion = false }) {
   const walkTarget = useRef(null)
   const camera = useRef({ ...loaded.current.player })
   const wind = useRef(windAt(0))
+  const facing = useRef(1)
   const size = useRef({ width: 1000, height: 650, scale: 1, dpr: 1 })
 
   // ── Survival Vitals State ────────────────────────────────────────────────
@@ -119,6 +120,7 @@ export default function MarsGame({ reducedMotion = false }) {
           }
         }
         moving = Boolean(direction.x || direction.y)
+        if (direction.x !== 0) facing.current = direction.x > 0 ? 1 : -1
         game.current = {
           ...game.current,
           player: moving ? movePlayer(game.current.player, direction, dt, wind.current, 100) : game.current.player,
@@ -170,7 +172,8 @@ export default function MarsGame({ reducedMotion = false }) {
         wind.current,
         false,
         false,
-        false
+        false,
+        facing.current
       )
 
       if (now - lastHud > 120) {

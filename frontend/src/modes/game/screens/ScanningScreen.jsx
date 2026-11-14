@@ -20,7 +20,7 @@ const PILL_BUTTON_STYLE = {
   fontWeight: 600,
   letterSpacing: "0.09em",
   textTransform: "uppercase",
-  cursor: "pointer",
+  cursor: "var(--zr-cursor-pointer)",
   boxShadow: "0 6px 22px rgba(0, 0, 0, 0.45)",
 };
 

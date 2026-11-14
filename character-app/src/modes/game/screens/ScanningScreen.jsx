@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import backgroundImg  from "../assets/images/background.jpg";
-import silhouetteImg  from "../assets/characters/silhouette.png";
-import characterImg   from "../assets/characters/character.png";
+import silhouetteImg  from "../assets/images/silhouette.png";
+import characterImg   from "../assets/images/character.png";
 
 // ─── Keyframe injection ────────────────────────────────────────────────────────
 const STYLES = `

@@ -111,10 +111,6 @@ export function drawSprite(ctx, kind, x, y, scale = 3, moving = false, time = 0,
     if (frameImg && frameImg.complete && frameImg.naturalWidth > 0) {
       const drawHeight = 18 * scale
       const drawWidth = drawHeight * (frameImg.naturalWidth / frameImg.naturalHeight)
-      ctx.fillStyle = '#332b2745'
-      ctx.beginPath()
-      ctx.ellipse(x + 2, y + 4, drawWidth * 0.34, 5, 0, 0, Math.PI * 2)
-      ctx.fill()
       ctx.save()
       ctx.imageSmoothingEnabled = false
       ctx.translate(Math.round(x), Math.round(y))

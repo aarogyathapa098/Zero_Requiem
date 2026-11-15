@@ -5,6 +5,7 @@ import metadata from '../data/jezeroDem.json'
 import MARS_ROUTES from '../data/marsRoutes.js'
 import { SIM3464_BOUNDS, SIM3464_IMAGE, SIM3464_SOURCE } from '../data/sim3464'
 import { JEZERO_FORMATION, JEZERO_NAME_ORIGIN, JEZERO_NAMING_SOURCE, JEZERO_PLACE_NAMES } from '../data/jezeroStory'
+import { lonLatToCell, openMarsGrid } from '../../../shared/marsGrid/index.js'
 import './jezeroMap.css'
 
 const RADIUS = 3396190
@@ -23,6 +24,19 @@ const ppd = zoom => 512 * 2 ** zoom / 360
 const metresPerPixel = (zoom, lat) => 2 * Math.PI * RADIUS * Math.cos(lat * Math.PI / 180) / (512 * 2 ** zoom)
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value))
 const intersects = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
+const formatGridNumber = (value, digits = 1) => Number.isFinite(value) ? value.toFixed(digits) : '—'
+const describeGridCell = readout => {
+  if (!readout?.inGrid) return null
+  const { values, geology, flags } = readout
+  const masks = [flags.demValid ? 'DEM valid' : 'No DEM', flags.navigable ? 'Navigable' : 'Not navigable']
+  return {
+    position: `R ${readout.row} · C ${readout.col}`,
+    terrain: `${formatGridNumber(values.elevation)} m · ${formatGridNumber(values.slope)}° slope`,
+    geology: geology ? `${geology.symbol} · ${geology.name}` : 'Unmapped geology',
+    geologyNote: geology?.resolutionNote,
+    masks: masks.join(' · '),
+  }
+}
 
 export default function JezeroMap({ onBack }) {
   const viewportRef = useRef(null)
@@ -35,6 +49,11 @@ export default function JezeroMap({ onBack }) {
   const [geologyOpacity, setGeologyOpacity] = useState(0.7)
   const [showTraverse, setShowTraverse] = useState(true)
   const [tileError, setTileError] = useState(false)
+  const gridRef = useRef(null)
+  const gridQueryRef = useRef({ token: 0, cellKey: null })
+  const [gridStatus, setGridStatus] = useState('loading')
+  const [gridError, setGridError] = useState('')
+  const [gridReadout, setGridReadout] = useState(null)
   const resolution = metresPerPixel(view.zoom, view.lat)
   const hiriseBounds = MARS_IMAGERY.jezero.hirise.bounds
   const inHiriseBounds = view.lon >= hiriseBounds[0] && view.lon <= hiriseBounds[2] && view.lat >= hiriseBounds[1] && view.lat <= hiriseBounds[3]
@@ -44,6 +63,56 @@ export default function JezeroMap({ onBack }) {
     observer.observe(viewportRef.current)
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    openMarsGrid()
+      .then(grid => {
+        if (cancelled) {
+          grid.close().catch(() => {})
+          return
+        }
+        gridRef.current = grid
+        setGridStatus('ready')
+      })
+      .catch(error => {
+        if (cancelled) return
+        setGridStatus('unavailable')
+        setGridError(error.message)
+      })
+    return () => {
+      cancelled = true
+      gridQueryRef.current.token++
+      const grid = gridRef.current
+      gridRef.current = null
+      grid?.close().catch(() => {})
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!cursor || gridStatus !== 'ready' || !gridRef.current) {
+      gridQueryRef.current.token++
+      gridQueryRef.current.cellKey = null
+      setGridReadout(null)
+      return
+    }
+    const cell = lonLatToCell(cursor.lon, cursor.lat)
+    const key = `${cell.row}:${cell.col}`
+    if (gridQueryRef.current.cellKey === key) return
+    const token = ++gridQueryRef.current.token
+    const grid = gridRef.current
+    grid.queryCell(cell.row, cell.col)
+      .then(result => {
+        if (token !== gridQueryRef.current.token) return
+        gridQueryRef.current.cellKey = key
+        setGridReadout(result)
+      })
+      .catch(error => {
+        if (token !== gridQueryRef.current.token) return
+        gridQueryRef.current.cellKey = key
+        setGridReadout({ inGrid: false, row: cell.row, col: cell.col, error: error.message })
+      })
+  }, [cursor, gridStatus])
 
   const screenPoint = useCallback((lon, lat) => ({
     x: size.width / 2 + (lon - view.lon) * ppd(view.zoom),
@@ -137,6 +206,7 @@ export default function JezeroMap({ onBack }) {
   const perseverance = MARS_ROUTES.perseverance
   const roverPoint = screenPoint(...perseverance.latest)
   const roverFeature = { name: 'Perseverance rover', kind: `Sol ${perseverance.sol} · route snapshot`, detail: 'NASA’s recorded traverse through this map snapshot. Open the live mission map for the newest drive.', url: perseverance.missionUrl }
+  const gridCell = describeGridCell(gridReadout)
 
   return <main id="explorer" className="jezero-map-page">
     <div className="jezero-map-heading">
@@ -168,7 +238,17 @@ export default function JezeroMap({ onBack }) {
         <div className="jezero-map-compass" aria-hidden="true"><Compass size={18} /><span>N</span></div>
         <div className="jezero-map-controls" aria-label="Map controls"><button onClick={() => zoomAt(view.zoom + .7)} aria-label="Zoom in"><Plus size={19} /></button><button onClick={() => zoomAt(view.zoom - .7)} aria-label="Zoom out"><Minus size={19} /></button><button onClick={() => { setView(INITIAL); setSelected(null) }} aria-label="Reset regional map"><RotateCcw size={17} /></button></div>
         <div className="jezero-map-scale" aria-hidden="true"><span style={{ width: `${scaleKm * 1000 / resolution}px` }} />{scaleKm} km</div>
-        <div className="jezero-map-coordinate">{cursor ? `${cursor.lat.toFixed(4)}° N · ${cursor.lon.toFixed(4)}° E` : `${view.lat.toFixed(4)}° N · ${view.lon.toFixed(4)}° E`}</div>
+        <div className={`jezero-map-coordinate${gridCell ? ' has-grid' : ''}`}>
+          <span>{cursor ? `${cursor.lat.toFixed(4)}° N · ${cursor.lon.toFixed(4)}° E` : `${view.lat.toFixed(4)}° N · ${view.lon.toFixed(4)}° E`}</span>
+          {gridCell && <div className="jezero-grid-readout">
+            <span><b>{gridCell.position}</b> · {gridCell.terrain}</span>
+            <span title={gridCell.geologyNote}>{gridCell.geology}</span>
+            <span className="jezero-grid-masks">{gridCell.masks}</span>
+          </div>}
+          {gridStatus === 'ready' && gridReadout && !gridReadout.inGrid && <div className="jezero-grid-readout muted">Outside the 20 m terrain grid</div>}
+          {gridStatus === 'loading' && <div className="jezero-grid-readout muted">Loading 20 m terrain grid…</div>}
+          {gridStatus === 'unavailable' && <div className="jezero-grid-readout muted" title={gridError}>20 m terrain grid unavailable</div>}
+        </div>
       </div>
       <div className="jezero-map-legend"><strong>{imagery === 'relief' ? 'Elevation relief' : imagery === 'geology' ? 'USGS SIM 3464' : 'Mars orbital imagery'}</strong><span>{imagery === 'relief' ? '20 m CTX DEM in mapped area' : imagery === 'geology' ? 'Mapped units · 1:75,000 · approximate alignment' : 'HiRISE 25 cm · CTX 6 m · MOLA context'}</span><small>{imagery === 'geology' ? 'USGS notes a 100–200 m offset from the rover operations mosaic.' : tileError ? 'Live tiles unavailable; local relief remains visible.' : 'High detail is limited to mapped coverage.'}</small><a href={imagery === 'geology' ? SIM3464_SOURCE : perseverance.missionUrl} target="_blank" rel="noreferrer">{imagery === 'geology' ? 'USGS map ↗' : 'NASA live rover map ↗'}</a></div>
     </div>

@@ -2,8 +2,14 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import backgroundImg from "../assets/images/background.jpg";
 import characterImg from "../assets/images/characters/1.png";
-import { getCharacterById } from "../data/characters.js";
-import { loadSavedProgress } from "../../map/game/marsModel.js";
+import MissionGuideModal from "../components/MissionGuideModal.jsx";
+import { CHARACTERS, getCharacterById } from "../data/characters.js";
+import {
+  completeMissionTask,
+  loadMissionProgress,
+  recordAlienDefeated,
+} from "../data/missions.js";
+import { loadSavedProgress, markCreatureScanned } from "../../map/game/marsModel.js";
 import "./BattleScreen.css";
 
 interface Move {
@@ -162,6 +168,14 @@ class BattleAudioEngine {
     this.playTone(660, "square", 0.08, 0.1, 0.01);
   }
 
+  playRepair() {
+    if (this.muted) return;
+    this.playTone(523.25, "triangle", 0.12, 0.18, 0.01);
+    setTimeout(() => this.playTone(659.25, "triangle", 0.12, 0.18, 0.01), 110);
+    setTimeout(() => this.playTone(783.99, "triangle", 0.16, 0.2, 0.01), 220);
+    setTimeout(() => this.playTone(1046.5, "sine", 0.28, 0.22, 0.01), 340);
+  }
+
   playRun() {
     if (this.muted) return;
     const ctx = this.getContext();
@@ -220,6 +234,7 @@ export default function BattleScreen() {
   const enemyCreature = getCharacterById(resolvedEnemyId ?? 1);
   const enemyName = enemyCreature.name;
   const enemySprite = enemyCreature.character;
+  const maxEnemyHp = enemyCreature.enemyMaxHp || 85;
 
   // Enforce fighting only after scanning the respective creature
   useEffect(() => {
@@ -235,14 +250,17 @@ export default function BattleScreen() {
     }
   }, [isTargetScanned, navigate, paramCharId, paramSlot]);
 
+  // Mission & UI state
+  const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
+  const [showMissionGuide, setShowMissionGuide] = useState(false);
+
   // Audio state
   const [muted, setMuted] = useState(false);
 
   // Combatant stats
-  const [enemyHp, setEnemyHp] = useState(85);
-  const maxEnemyHp = 85;
-  const [playerHp, setPlayerHp] = useState(78);
-  const maxPlayerHp = 78;
+  const [enemyHp, setEnemyHp] = useState(maxEnemyHp);
+  const [playerHp, setPlayerHp] = useState(88);
+  const maxPlayerHp = 88;
   const [playerExp, setPlayerExp] = useState(45);
 
   // Battle state machine
@@ -257,7 +275,9 @@ export default function BattleScreen() {
     | "ran"
   >("intro");
 
-  const [dialogue, setDialogue] = useState(`A wild ${enemyName} appeared!`);
+  const [dialogue, setDialogue] = useState(
+    `Mission ${enemyCreature.missionNumber}: ${enemyCreature.alienTitle} appeared!`
+  );
   const [selectedMoveIndex, setSelectedMoveIndex] = useState(0);
 
   // Animation triggers
@@ -271,12 +291,21 @@ export default function BattleScreen() {
   const [isEnemyFainted, setIsEnemyFainted] = useState(false);
   const [isPlayerFainted, setIsPlayerFainted] = useState(false);
 
-  // Initial Entrance Sequence
+  // Reset stats if user switches to a different alien via Mission Guide
   useEffect(() => {
+    setEnemyHp(enemyCreature.enemyMaxHp || 85);
+    setPlayerHp(maxPlayerHp);
+    setIsEnemyFainted(false);
+    setIsPlayerFainted(false);
+    setPhase("intro");
+    setDialogue(
+      `Mission ${enemyCreature.missionNumber}: ${enemyCreature.alienTitle} — ${enemyCreature.behavior}`
+    );
+
     audio.playTone(440, "triangle", 0.2, 0.15, 0.01);
     const enterTimer = setTimeout(() => {
       setHasEntered(true);
-      setDialogue("Go, ECHOSONIC!");
+      setDialogue(`Defeat ${enemyCreature.alienNumber} to obtain ${enemyCreature.scrapName}!`);
       const readyTimer = setTimeout(() => {
         setDialogue("What will ECHOSONIC do?");
         setPhase("idle");
@@ -285,7 +314,15 @@ export default function BattleScreen() {
     }, 1100);
 
     return () => clearTimeout(enterTimer);
-  }, []);
+  }, [
+    enemyCreature.id,
+    enemyCreature.alienNumber,
+    enemyCreature.alienTitle,
+    enemyCreature.behavior,
+    enemyCreature.enemyMaxHp,
+    enemyCreature.missionNumber,
+    enemyCreature.scrapName,
+  ]);
 
   const toggleMute = () => {
     audio.muted = !muted;
@@ -331,27 +368,34 @@ export default function BattleScreen() {
         setIsEnemyHit(false);
 
         // Calculate damage
-        const damage = Math.round(move.power * 0.45 + (Date.now() % 7));
+        const damage = Math.round(move.power * 0.52 + (Date.now() % 8));
         const newEnemyHp = Math.max(0, enemyHp - damage);
         setEnemyHp(newEnemyHp);
 
         if (newEnemyHp <= 0) {
-          // Enemy Faints!
+          // Enemy Faints! Record Scrap drop for this Mission!
           setTimeout(() => {
             setIsEnemyFainted(true);
-            setDialogue(`Wild ${enemyName} fainted!`);
+            const updatedMissions = recordAlienDefeated(enemyCreature.id);
+            setMissionProgress(updatedMissions);
+            setDialogue(
+              `${enemyCreature.alienTitle} defeated! Obtained ${enemyCreature.scrapName}!`
+            );
             audio.playTone(280, "triangle", 0.4, 0.2, 0.01);
 
             setTimeout(() => {
               setPlayerExp((exp) => Math.min(100, exp + 45));
-              setDialogue("ECHOSONIC gained 240 EXP. Points!");
+              setDialogue(
+                `Recovered ${enemyCreature.scrapName}! Ready to repair ${enemyCreature.targetObject}.`
+              );
               setPhase("fainted_enemy");
             }, 1200);
           }, 600);
         } else {
           // Enemy Retaliation Turn
           setTimeout(() => {
-            setDialogue(`Wild ${enemyName} used VOID PULSE!`);
+            const enemyMove = enemyCreature.enemySignatureMove || "VOID PULSE";
+            setDialogue(`${enemyCreature.alienTitle} used ${enemyMove}!`);
             setIsEnemyLunging(true);
             audio.playTone(320, "sawtooth", 0.35, 0.2, 0.01);
 
@@ -361,7 +405,7 @@ export default function BattleScreen() {
               setIsPlayerHit(true);
               audio.playHit();
 
-              const enemyDmg = Math.round(18 + (Date.now() % 9));
+              const enemyDmg = Math.round(16 + (Date.now() % 8));
               const newPlayerHp = Math.max(0, playerHp - enemyDmg);
               setPlayerHp(newPlayerHp);
 
@@ -371,7 +415,7 @@ export default function BattleScreen() {
 
                 if (newPlayerHp <= 0) {
                   setIsPlayerFainted(true);
-                  setDialogue("ECHOSONIC fainted! Blacked out...");
+                  setDialogue("ECHOSONIC fainted! Emergency suit recall triggered...");
                   setPhase("fainted_player");
                 } else {
                   setDialogue("What will ECHOSONIC do?");
@@ -401,6 +445,31 @@ export default function BattleScreen() {
     setPhase("idle");
   };
 
+  // Handle using the dropped Scrap to repair the Mission Crate / Core / Filter
+  const handleExecuteMissionRepair = () => {
+    audio.playRepair();
+    const updated = completeMissionTask(enemyCreature.id);
+    setMissionProgress(updated);
+    setDialogue(
+      `Mission ${enemyCreature.missionNumber} Complete! ${enemyCreature.targetObject} repaired!`
+    );
+  };
+
+  const handleNextMissionBattle = () => {
+    const nextId = (enemyCreature.id % CHARACTERS.length) + 1;
+    const progress = loadSavedProgress();
+    const nextSlot = Math.max(0, progress.creatureOrder.indexOf(nextId));
+    markCreatureScanned(nextSlot, nextId);
+    navigate(`/battle?characterId=${nextId}&slot=${nextSlot}`, {
+      replace: true,
+      state: {
+        fromMap: true,
+        characterId: nextId,
+        slot: nextSlot,
+      },
+    });
+  };
+
   // HP Color utility
   const getHpColorClass = (current: number, max: number) => {
     const ratio = current / max;
@@ -410,6 +479,7 @@ export default function BattleScreen() {
   };
 
   const selectedMove = MOVES[selectedMoveIndex];
+  const isCurrentMissionRepaired = missionProgress.completedMissions.includes(enemyCreature.id);
 
   return (
     <div className="battle-viewport">
@@ -417,8 +487,25 @@ export default function BattleScreen() {
         {/* Intro Transition Overlay */}
         <div className="battle-intro-overlay" aria-hidden="true" />
 
+        {/* Mission Banner Pill (Top Left) */}
+        <div className="battle-mission-banner">
+          <span className="battle-mission-tag">
+            MISSION {enemyCreature.missionNumber}: {enemyCreature.missionTitle.toUpperCase()}
+          </span>
+          <span className="battle-mission-sub">
+            Scrap Target: {enemyCreature.scrapName} → Fix {enemyCreature.targetObject}
+          </span>
+        </div>
+
         {/* Top Utility Controls */}
         <div className="battle-top-bar">
+          <button
+            type="button"
+            className="top-bar-btn is-mission-btn"
+            onClick={() => setShowMissionGuide(true)}
+          >
+            📋 MISSIONS ({missionProgress.completedMissions.length}/6)
+          </button>
           <button
             type="button"
             className="top-bar-btn"
@@ -456,7 +543,7 @@ export default function BattleScreen() {
           >
             <img
               src={enemySprite}
-              alt={`Wild ${enemyName}`}
+              alt={enemyCreature.alienTitle}
               className="pokemon-sprite-enemy"
             />
           </div>
@@ -493,7 +580,8 @@ export default function BattleScreen() {
             <div className="hud-top-row">
               <span className="hud-name">{enemyName}</span>
               <span className="hud-level">
-                <span className="hud-level-prefix">:L</span>25
+                <span className="hud-level-prefix">:L</span>
+                {enemyCreature.enemyLevel || 25}
               </span>
             </div>
             <div className="hud-hp-row">
@@ -504,6 +592,9 @@ export default function BattleScreen() {
                   style={{ width: `${(enemyHp / maxEnemyHp) * 100}%` }}
                 />
               </div>
+            </div>
+            <div className="hud-scrap-caption">
+              {enemyCreature.alienNumber} · Holds: {enemyCreature.scrapName}
             </div>
           </div>
 
@@ -600,7 +691,7 @@ export default function BattleScreen() {
                 </div>
               </>
             ) : (
-              /* Mars-graded Command Box: Only FIGHT and RUN */
+              /* Mars-graded Command Box: FIGHT and RUN */
               <div className="command-grid">
                 <button
                   type="button"
@@ -623,12 +714,63 @@ export default function BattleScreen() {
           </div>
         </div>
 
-        {/* ── Victory / Defeat / Escape Overlays ──────────────────────── */}
+        {/* ── Victory / Scrap Drop / Task Repair Overlay ──────────────── */}
         {phase === "fainted_enemy" && (
           <div className="battle-end-overlay">
-            <h2 className="battle-end-title">★ VICTORY! ★</h2>
-            <p>Wild {enemyName} was defeated by your SONIC RESONANCE!</p>
+            <h2 className="battle-end-title">
+              ★ MISSION {enemyCreature.missionNumber}: {enemyCreature.missionTitle.toUpperCase()} ★
+            </h2>
+
+            <div className="battle-mission-reward-card">
+              <div className="battle-reward-row">
+                <span className="battle-reward-label">THE ALIEN DEFEATED:</span>
+                <strong>{enemyCreature.alienTitle}</strong>
+                <small>{enemyCreature.behavior}</small>
+              </div>
+
+              <div className="battle-reward-row is-scrap-drop">
+                <span className="battle-reward-label">SCRAP OBTAINED:</span>
+                <strong>⚙ {enemyCreature.scrapName}</strong>
+                <small>{enemyCreature.scrapOrigin}</small>
+              </div>
+
+              <div className="battle-reward-row">
+                <span className="battle-reward-label">MISSION TASK:</span>
+                <p className="battle-task-text">{enemyCreature.taskDescription}</p>
+              </div>
+
+              {!isCurrentMissionRepaired ? (
+                <button
+                  type="button"
+                  className="battle-repair-cta"
+                  onClick={handleExecuteMissionRepair}
+                >
+                  🔧 USE {enemyCreature.scrapName.toUpperCase()} →{" "}
+                  {enemyCreature.taskActionLabel.toUpperCase()}
+                </button>
+              ) : (
+                <div className="battle-repaired-badge" role="status">
+                  ✓ {enemyCreature.targetObject.toUpperCase()} REPAIRED!
+                  <span>{enemyCreature.systemEffectLabel}</span>
+                </div>
+              )}
+            </div>
+
             <div className="battle-end-actions">
+              <button
+                type="button"
+                className="battle-end-btn"
+                onClick={() => setShowMissionGuide(true)}
+              >
+                📋 MISSION GUIDE ({missionProgress.completedMissions.length}/6)
+              </button>
+              <button
+                type="button"
+                className="battle-end-btn"
+                onClick={handleNextMissionBattle}
+              >
+                NEXT MISSION ALIEN →
+              </button>
               <button
                 type="button"
                 className="battle-end-btn"
@@ -652,7 +794,9 @@ export default function BattleScreen() {
             <h2 className="battle-end-title" style={{ color: "#ff4444" }}>
               DEFEATED
             </h2>
-            <p>ECHOSONIC fainted! Your sound waves faded...</p>
+            <p>
+              ECHOSONIC fainted against {enemyCreature.alienTitle}! Your sound waves faded...
+            </p>
             <div className="battle-end-actions">
               <button
                 type="button"
@@ -660,6 +804,13 @@ export default function BattleScreen() {
                 onClick={handleResetBattle}
               >
                 TRY AGAIN
+              </button>
+              <button
+                type="button"
+                className="battle-end-btn"
+                onClick={() => setShowMissionGuide(true)}
+              >
+                📋 MISSION GUIDE
               </button>
               <button
                 type="button"
@@ -677,7 +828,7 @@ export default function BattleScreen() {
             <h2 className="battle-end-title" style={{ color: "#ffd89a" }}>
               ESCAPED
             </h2>
-            <p>You safely retreated from the {enemyName} encounter.</p>
+            <p>You safely retreated from the {enemyCreature.alienTitle} encounter.</p>
             <div className="battle-end-actions">
               <button
                 type="button"
@@ -685,6 +836,13 @@ export default function BattleScreen() {
                 onClick={handleResetBattle}
               >
                 BATTLE AGAIN
+              </button>
+              <button
+                type="button"
+                className="battle-end-btn"
+                onClick={() => setShowMissionGuide(true)}
+              >
+                📋 MISSION GUIDE
               </button>
               <button
                 type="button"
@@ -697,6 +855,13 @@ export default function BattleScreen() {
           </div>
         )}
       </div>
+
+      <MissionGuideModal
+        isOpen={showMissionGuide}
+        onClose={() => setShowMissionGuide(false)}
+        activeCharacterId={enemyCreature.id}
+        onProgressChange={(next) => setMissionProgress(next)}
+      />
     </div>
   );
 }

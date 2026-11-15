@@ -657,6 +657,12 @@ export default function CharacterDiscover({
   silhouetteSrc = silhouetteImg,
   characterSrc = characterImg,
   characterName = "Mystery Creature",
+  alienTitle = null,
+  missionNumber = null,
+  missionTitle = null,
+  behavior = null,
+  scrapName = null,
+  taskDescription = null,
   onDiscover = () => {},
 }) {
   const [phase, setPhase] = useState("hidden"); // hidden | revealing | revealed
@@ -786,8 +792,12 @@ export default function CharacterDiscover({
         <div className="zr-label">
           {isRevealed ? (
             <div className="zr-name">
-              <small>Bestiary updated</small>
-              <strong>✦ {characterName} ✦</strong>
+              <small>
+                {missionNumber && missionTitle
+                  ? `Mission ${missionNumber}: ${missionTitle}`
+                  : "Bestiary updated"}
+              </small>
+              <strong>✦ {alienTitle || characterName} ✦</strong>
             </div>
           ) : phase === "hidden" ? (
             <RadarButton
@@ -811,10 +821,25 @@ export default function CharacterDiscover({
 
       {isRevealed && (
         <div className="zr-holo" role="status" aria-live="polite">
-          <div className="zr-holo-eyebrow">Data bank · sync</div>
-          <div className="zr-holo-title">Creature identified</div>
+          <div className="zr-holo-eyebrow">
+            {missionNumber ? `Mission ${missionNumber} · Target Dossier` : "Data bank · sync"}
+          </div>
+          <div className="zr-holo-title">{missionTitle || "Creature identified"}</div>
           <div className="zr-holo-body">
-            <strong>{characterName}</strong> catalogued and added to the data bank.
+            <div>
+              <strong>{alienTitle || characterName}</strong> —{" "}
+              {behavior || "Catalogued and added to the data bank."}
+            </div>
+            {scrapName && (
+              <div style={{ marginTop: 6, color: "#ffe299" }}>
+                <strong>Scrap Drop:</strong> {scrapName}
+              </div>
+            )}
+            {taskDescription && (
+              <div style={{ marginTop: 6, opacity: 0.92 }}>
+                <strong>Task:</strong> {taskDescription}
+              </div>
+            )}
           </div>
           <div className="zr-holo-bar">
             <span />

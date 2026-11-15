@@ -10,15 +10,43 @@ import sil3 from "../assets/images/silhouette/3.1.png";
 import sil4 from "../assets/images/silhouette/4.1.png";
 import sil5 from "../assets/images/silhouette/5.1.png";
 import sil6 from "../assets/images/silhouette/6.1.png";
+import { MISSIONS } from "./missions.js";
 
-export const CHARACTERS = [
-  { id: 1, name: "NTM-102", character: char1, silhouette: sil1 },
-  { id: 2, name: "SR-112", character: char2, silhouette: sil2 },
-  { id: 3, name: "SG-132", character: char3, silhouette: sil3 },
-  { id: 4, name: "AJ-911", character: char4, silhouette: sil4 },
-  { id: 5, name: "UP-404", character: char5, silhouette: sil5 },
-  { id: 6, name: "NRJ-101", character: char6, silhouette: sil6 },
+const SPRITES = [
+  { id: 1, character: char1, silhouette: sil1 },
+  { id: 2, character: char2, silhouette: sil2 },
+  { id: 3, character: char3, silhouette: sil3 },
+  { id: 4, character: char4, silhouette: sil4 },
+  { id: 5, character: char5, silhouette: sil5 },
+  { id: 6, character: char6, silhouette: sil6 },
 ];
+
+export const CHARACTERS = MISSIONS.map((mission) => {
+  const sprite = SPRITES.find((item) => item.id === mission.characterId) || SPRITES[0];
+  return {
+    id: mission.characterId,
+    code: mission.code,
+    name: mission.alienName,
+    alienNumber: mission.alienNumber,
+    alienTitle: mission.alienTitle,
+    missionNumber: mission.missionNumber,
+    missionTitle: mission.title,
+    behavior: mission.alienBehavior,
+    scrapName: mission.scrapName,
+    scrapBattleText: mission.scrapBattleText,
+    scrapOrigin: mission.scrapOrigin,
+    targetObject: mission.targetObject,
+    taskActionLabel: mission.taskActionLabel,
+    taskDescription: mission.taskDescription,
+    systemEffectLabel: mission.systemEffectLabel,
+    locationTag: mission.locationTag,
+    enemyLevel: mission.enemyLevel,
+    enemyMaxHp: mission.enemyMaxHp,
+    enemySignatureMove: mission.enemySignatureMove,
+    character: sprite.character,
+    silhouette: sprite.silhouette,
+  };
+});
 
 export function getCharacterById(id) {
   const numericId = Number(id);

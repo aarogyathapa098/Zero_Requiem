@@ -777,8 +777,8 @@ export default function MarsGame({ reducedMotion = false }) {
   const o2Color = vitalsState.oxygen > 35
     ? ['#38ef7d', '#11998e']
     : vitalsState.oxygen > 18
-    ? ['#f7b733', '#fc4a1a']
-    : ['#ff416c', '#ff4b2b']
+      ? ['#f7b733', '#fc4a1a']
+      : ['#ff416c', '#ff4b2b']
 
   const activeMissionCreature = getActiveTargetCreature(hudState.creatures)
   const allMissionsComplete =
@@ -801,7 +801,7 @@ export default function MarsGame({ reducedMotion = false }) {
   const getSerialStepLabel = () => {
     if (!activeMissionCreature) {
       return {
-        eyebrow: 'Missions 1, 2 & 5 Accomplished',
+        eyebrow: 'Missions 1, 2 & 3 Accomplished',
         title: `All ${MISSIONS.length} Missions Complete · Reports Decrypted`,
         sub: 'Supply Crate, Perseverance Rover & Classified Historical Reports restored.',
       }
@@ -1108,8 +1108,8 @@ export default function MarsGame({ reducedMotion = false }) {
                 ? `⚔ Battle Roaming ${activeNearbyCreature.name} [E]`
                 : `✦ Scan Roaming ${activeNearbyCreature.name} [E]`
               : activeNearbyCreature.scanned
-              ? `⚔ Battle ${activeNearbyCreature.alienTitle} for ${activeNearbyCreature.scrapName} [E]`
-              : `✦ Scan ${activeNearbyCreature.alienTitle} (Mission ${activeNearbyCreature.missionNumber}) [E]`}
+                ? `⚔ Battle ${activeNearbyCreature.alienTitle} for ${activeNearbyCreature.scrapName} [E]`
+                : `✦ Scan ${activeNearbyCreature.alienTitle} (Mission ${activeNearbyCreature.missionNumber}) [E]`}
           </button>
         )}
         {activeNearbyCrate && (
@@ -1155,7 +1155,7 @@ export default function MarsGame({ reducedMotion = false }) {
         onSelectRecord={rec => setActiveRecord(rec)}
       />
 
-      {/* In-Game Serial Mission Log Modal (Missions 1, 2 & 5) */}
+      {/* In-Game Serial Mission Log Modal (Missions 1, 2 & 3) */}
       <MissionGuideModal
         isOpen={showMissionGuide}
         onClose={() => setShowMissionGuide(false)}
@@ -1181,7 +1181,7 @@ export default function MarsGame({ reducedMotion = false }) {
       {/* Final Mission 5 Completion Modal */}
       {allMissionsComplete && !dismissedFinaleModal && !storyBanner && (
         <div className="mars-rover-modal" role="dialog" aria-label="All missions completed">
-          <strong>★ ALL 3 SURFACE MISSIONS COMPLETE (1, 2 &amp; 5)</strong>
+          <strong>★ ALL 3 SURFACE MISSIONS COMPLETE (1, 2 &amp; 3)</strong>
           <p>
             You repaired the Supply Crate to restore your HUD, reconnected the Perseverance Rover’s wires to bring its Power Core online, and used the Data-Decryptor Chip to recover the classified historical reports!
           </p>

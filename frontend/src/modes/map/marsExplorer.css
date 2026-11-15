@@ -89,3 +89,97 @@
 .mars-landing-app { height:100svh; overflow-x:hidden; overflow-y:auto; }
 .mars-landing-app .site-header nav .mars-game-entry { color:var(--accent); font-weight:800; white-space:nowrap; }
 .mars-landing-app .site-header nav .mars-game-entry:hover { color:#ffc29d; }
+
+/* Overview and exploration share the same centered Cesium scene. */
+.mars-landing-app { height:100dvh; overflow:hidden; }
+.mars-landing-app .experience { height:100%; display:flex; flex-direction:column; }
+.mars-landing-app .site-header { flex:none; }
+.mars-landing-app .explorer-shell { flex:1; min-height:0; }
+.mars-landing-app .explorer { height:100%; min-height:0; max-height:none; }
+.mars-landing-app .scene-container,
+.mars-landing-app .explorer-shell.poi-open .scene-container { inset:0; }
+.mars-landing-app .scene-vignette { background:linear-gradient(90deg,#0a0e12c9 0%,#0a0e1230 30%,transparent 60%),linear-gradient(0deg,#0a0e12a0,transparent 30%); }
+.mars-landing-app .is-exploring .scene-vignette { background:linear-gradient(0deg,#0a0e1240,transparent 25%); }
+.mars-landing-app .is-exploring .world-watermark { display:none; }
+.mars-landing-app .world-story { top:23%; bottom:auto; max-height:58%; overflow:auto; }
+.mars-landing-app .world-story .primary-button { margin-top:22px; }
+.mars-landing-app .world-facts { bottom:28px; }
+.mars-landing-app .site-footer { flex:none; }
+.mars-landing-app .exploration-toolbar { position:absolute; top:105px; left:4.2%; right:4.2%; z-index:9; display:flex; flex-direction:column; align-items:flex-start; gap:8px; pointer-events:none; }
+.mars-landing-app .exploration-toolbar>* { pointer-events:auto; }
+.mars-landing-app .controls-toggle { align-self:flex-end; padding:10px 14px; border:1px solid #ffffff38; background:#101820eb; border-radius:4px; color:#f3efe9; font-size:11px; font-weight:600; }
+.mars-landing-app .mars-exploration-dock { display:flex; width:100%; height:auto; margin:0; padding:12px; gap:12px; align-items:end; border:1px solid #ffffff30; background:#101820eb; backdrop-filter:blur(10px); border-radius:4px; }
+.mars-landing-app .mars-exploration-dock.controls-hidden { display:none; }
+.mars-landing-app .mars-exploration-dock>div { flex:1; min-width:0; }
+.mars-landing-app .mars-exploration-dock label { font-size:10px; color:#d6dce0; }
+.mars-landing-app .mars-exploration-dock select { min-width:0; font-size:12px; }
+.mars-landing-app .mars-poi-toggle,.mars-landing-app .mars-overview-button { flex:none; min-height:42px; padding:0 13px; border:1px solid #ffffff38; border-radius:3px; font-size:11px; white-space:nowrap; }
+.mars-landing-app .mars-poi-toggle.active { color:#f2a477; border-color:#f2a477; }
+.mars-landing-app .map-raster-legend { position:absolute; z-index:8; right:4.2%; top:204px; width:190px; padding:15px; background:#101820ed; border:1px solid #ffffff32; border-radius:4px; box-shadow:0 12px 36px #0008; }
+.mars-landing-app .map-raster-legend strong { display:block; font-size:12px; margin-bottom:11px; }
+.mars-landing-app .map-raster-legend small { display:block; color:#c0cbd0; line-height:1.5; font-size:10px; margin-top:10px; }
+.mars-landing-app .map-raster-legend img { display:block; width:100%; max-height:150px; object-fit:contain; }
+.mars-landing-app .mola-ramp { height:20px; background:linear-gradient(90deg,#432388 0%,#155bca 20%,#24b7cb 40%,#65cf69 57%,#ebdf48 74%,#ef914d 87%,#d9c3aa 100%); border:1px solid #ffffff66; }
+.mars-landing-app .legend-ends { display:flex; justify-content:space-between; margin-top:7px; color:#d6dce0; font-size:9px; }
+@media(max-width:900px) {
+  .mars-landing-app .exploration-toolbar { top:100px; }
+  .mars-landing-app .mars-exploration-dock { flex-wrap:wrap; max-height:40dvh; overflow:auto; }
+  .mars-landing-app .mars-exploration-dock>div { flex:1 1 38%; }
+  .mars-landing-app .map-raster-legend { top:auto; bottom:88px; right:5%; }
+}
+@media(max-width:600px) {
+  .mars-landing-app .site-header nav { gap:9px; }
+  .mars-landing-app .site-header nav button { font-size:9px; }
+  .mars-landing-app .world-story { top:24%; left:6%; width:68%; max-height:58%; }
+  .mars-landing-app .world-story h1 { font-size:clamp(56px,16vw,76px); }
+  .mars-landing-app .world-facts { left:6%; right:6%; bottom:24px; gap:5px; justify-content:space-between; }
+  .mars-landing-app .world-facts>div:not(:first-child) { padding-left:7px; }
+  .mars-landing-app .world-facts dd { font-size:13px; }
+  .mars-landing-app .exploration-toolbar { left:5%; right:5%; }
+  .mars-landing-app .map-raster-legend { width:154px; bottom:84px; }
+}
+
+/* Brief, transparent headphone notice on arrival. */
+.mars-landing-app .headphone-toast {
+  position:fixed;
+  top:50%;
+  right:4.2%;
+  z-index:30;
+  display:flex;
+  align-items:center;
+  gap:15px;
+  max-width:390px;
+  padding:16px 18px;
+  color:#fff;
+  background:transparent;
+  text-shadow:0 2px 8px #000,0 1px 2px #000;
+  pointer-events:none;
+  transform:translateY(-50%);
+  animation:headphone-appear 6s ease both;
+}
+.mars-landing-app .headphone-toast strong {
+  display:block;
+  font-size:15px;
+  line-height:1.2;
+  letter-spacing:-.02em;
+}
+.mars-landing-app .headphone-toast span {
+  display:block;
+  margin-top:5px;
+  font-size:13px;
+  line-height:1.5;
+}
+@keyframes headphone-appear {
+  0% { opacity:0; translate:12px 0; }
+  8%,84% { opacity:1; translate:0 0; }
+  100% { opacity:0; translate:8px 0; }
+}
+@media(max-width:600px) {
+  .mars-landing-app .headphone-toast { right:3%; max-width:265px; gap:9px; padding:10px; }
+  .mars-landing-app .headphone-toast svg { width:30px; }
+  .mars-landing-app .headphone-toast strong { font-size:12px; }
+  .mars-landing-app .headphone-toast span { font-size:11px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .mars-landing-app .headphone-toast { animation:none; }
+}

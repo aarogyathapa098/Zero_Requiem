@@ -13,6 +13,7 @@ const ION_ASSET_ID = 3644333
 
 export default function CesiumMarsHero({
   activeLandmark = 'global',
+  showPoi = false,
   onSelectLandmark,
   scienceLayer = 'natural',
   geologyOpacity = 0.68,
@@ -26,8 +27,12 @@ export default function CesiumMarsHero({
 }) {
   const container = useRef(null)
   const viewerRef = useRef(null)
+  const poiEntitiesRef = useRef([])
+  const showPoiRef = useRef(showPoi)
+  showPoiRef.current = showPoi
   const isDragging = useRef(false)
   const [ready, setReady] = useState(false)
+  const [poiLabels, setPoiLabels] = useState([])
   const previousZoom = useRef(zoom)
   const previousReset = useRef(reset)
   const geologyOpacityRef = useRef(geologyOpacity)
@@ -143,18 +148,6 @@ export default function CesiumMarsHero({
               outlineWidth: 2,
               disableDepthTestDistance: 0,
             },
-            label: {
-              show,
-              text: item.name,
-              font: '600 13px Manrope, sans-serif',
-              fillColor: Cesium.Color.fromCssColorString('#f4ebd9'),
-              outlineColor: Cesium.Color.fromCssColorString('#0a0e12'),
-              outlineWidth: 3,
-              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-              pixelOffset: new Cesium.Cartesian2(0, -20),
-              scaleByDistance: new Cesium.NearFarScalar(5e4, 1, 1.5e7, 0.45),
-              disableDepthTestDistance: 0,
-            },
           })
         })
 
@@ -176,20 +169,11 @@ export default function CesiumMarsHero({
               scaleByDistance: new Cesium.NearFarScalar(1e3, 1, 5e5, 0),
               disableDepthTestDistance: 0,
             },
-            label: {
-              show,
-              text: site.name,
-              font: '500 11px Manrope, sans-serif',
-              fillColor: Cesium.Color.fromCssColorString('#ffd8bf'),
-              outlineColor: Cesium.Color.BLACK,
-              outlineWidth: 2,
-              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-              pixelOffset: new Cesium.Cartesian2(0, -16),
-              scaleByDistance: new Cesium.NearFarScalar(1e3, 1, 3e5, 0),
-              disableDepthTestDistance: 0,
-            },
           })
         })
+
+        poiEntitiesRef.current = viewer.entities.values.filter(entity => entity.id.startsWith('landmark-') || entity.id.startsWith('traverse-'))
+        poiEntitiesRef.current.forEach(entity => { entity.show = showPoiRef.current })
 
         // Entity click handler
         const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
@@ -263,6 +247,60 @@ export default function CesiumMarsHero({
     }
   }, [])
 
+  // Keep crisp HTML labels aligned to their Cesium markers.
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer || !ready || !showPoi) {
+      setPoiLabels([])
+      return
+    }
+    const targets = [
+      ...MARS_LANDMARKS.filter(item => item.id !== 'global').map(item => ({
+        id: item.id,
+        name: item.name,
+        kind: 'landmark',
+        position: Cesium.Cartesian3.fromDegrees(item.longitude, item.latitude, 200, Cesium.Ellipsoid.MARS),
+      })),
+      ...JEZERO_SITES.map(site => ({
+        id: site.id,
+        name: site.name,
+        kind: 'site',
+        position: Cesium.Cartesian3.fromDegrees(site.longitude, site.latitude, site.elevation + 20, Cesium.Ellipsoid.MARS),
+      })),
+    ]
+    let lastFrame = 0
+    const updateLabels = () => {
+      const now = performance.now()
+      if (now - lastFrame < 40) return
+      lastFrame = now
+      const camera = viewer.camera.positionWC
+      const altitude = viewer.camera.positionCartographic?.height ?? Infinity
+      const width = container.current?.clientWidth ?? 0
+      const height = container.current?.clientHeight ?? 0
+      const labels = []
+      for (const target of targets) {
+        if (target.kind === 'site' && altitude > 250000) continue
+        const normal = Cesium.Ellipsoid.MARS.geodeticSurfaceNormal(target.position, new Cesium.Cartesian3())
+        const toCamera = Cesium.Cartesian3.subtract(camera, target.position, new Cesium.Cartesian3())
+        Cesium.Cartesian3.normalize(toCamera, toCamera)
+        const facing = Cesium.Cartesian3.dot(normal, toCamera)
+        const opacity = Cesium.Math.clamp((facing - 0.04) / 0.28, 0, 1)
+        if (opacity < 0.06) continue
+        const screen = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, target.position)
+        if (!screen || screen.x < 0 || screen.x > width || screen.y < 0 || screen.y > height) continue
+        // Keep nearby labels from stacking into unreadable text.
+        if (labels.some(label => Math.abs(label.x - screen.x) < 120 && Math.abs(label.y - screen.y) < 38)) continue
+        labels.push({ id: target.id, name: target.name, kind: target.kind, x: screen.x, y: screen.y, opacity })
+      }
+      setPoiLabels(labels)
+    }
+    const removeListener = viewer.scene.postRender.addEventListener(updateLabels)
+    updateLabels()
+    return () => {
+      removeListener()
+    }
+  }, [ready, showPoi])
+
   // Auto-rotation around Martian polar axis when idle
   useEffect(() => {
     const viewer = viewerRef.current
@@ -328,6 +366,10 @@ export default function CesiumMarsHero({
     const viewer = viewerRef.current
     if (scienceLayer === 'sim3464' && viewer && viewer.imageryLayers.length > 1) viewer.imageryLayers.get(1).alpha = geologyOpacity
   }, [geologyOpacity, scienceLayer, ready])
+
+  useEffect(() => {
+    poiEntitiesRef.current.forEach(entity => { entity.show = showPoi })
+  }, [showPoi, ready])
 
   // Route data from NASA traverse feeds; rover meshes and the fictional
   // Watney journey come from the supplied Cesium Mars sample.
@@ -454,6 +496,11 @@ export default function CesiumMarsHero({
   return (
     <div className="cesium-mars-hero" aria-label="Interactive 3D Mars globe powered by Cesium">
       <div ref={container} className="cesium-mars-viewport" />
+      {showPoi && poiLabels.length > 0 && <div className="mars-poi-labels" aria-label="Mars points of interest">
+        {poiLabels.map(label => label.kind === 'landmark'
+          ? <button key={label.id} className="mars-poi-label" style={{ left: label.x, top: label.y - 18, opacity: label.opacity }} onClick={() => onSelectLandmark?.(label.id)}>{label.name}</button>
+          : <span key={label.id} className="mars-poi-label mars-site-label" style={{ left: label.x, top: label.y - 14, opacity: label.opacity }}>{label.name}</span>)}
+      </div>}
       {!ready && (
         <div className="scene-loading" role="status">
           <span />

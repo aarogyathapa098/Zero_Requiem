@@ -44,6 +44,10 @@ This is an independent prototype for a NASA Space Apps project. It does not use 
 
 No pre-existing website was supplied. Components are separated under `src/components/` for later integration into your real website.
 
+## SOLBOUND terrain grid
+
+The 2D Jezero map cursor readout queries the local SOLBOUND 20 m terrain and geology grid directly. Move the pointer over the map to see the grid cell, elevation, slope, mapped geology unit, and the distinct DEM/navigation mask flags. The same read-only grid API can answer cell, window, projected-metre, and lon/lat queries for future pathfinding work. Setup, data requirements, mask semantics, configuration, and validation commands are documented in [MARS_GRID.md](MARS_GRID.md). The raster folder is gitignored, so a clean clone must provision it separately.
+
 ## Assets and attribution
 
 See [ASSETS.md](ASSETS.md). Map attribution is displayed in the terrain view. NASA Science links are available in Field notes.

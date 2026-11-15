@@ -60,10 +60,15 @@ canvas:active,
 
 body {
   margin: 0;
-  overflow: hidden;
+  overflow: auto;
   background: #02030a;
 }
 
 #root {
   min-height: 100svh;
+}
+
+body.mars-scroll-lock {
+  overflow: hidden;
+  overscroll-behavior: none;
 }

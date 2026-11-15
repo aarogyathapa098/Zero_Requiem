@@ -254,3 +254,46 @@
   .mars-science-picker,
   .mars-route-picker { flex: 1 1 220px; }
 }
+
+/* Screen-space tags remain sharp at every globe zoom level. */
+.cesium-mars-hero .mars-poi-labels {
+  position:absolute;
+  inset:0;
+  z-index:5;
+  pointer-events:none;
+}
+.cesium-mars-hero .mars-poi-label {
+  position:absolute;
+  display:block;
+  max-width:min(260px,40vw);
+  padding:8px 12px;
+  transform:translate(-50%,-100%);
+  background:#05080bf2;
+  border:1px solid #ffffff38;
+  border-radius:3px;
+  box-shadow:0 4px 16px #000a;
+  color:#fff;
+  font:700 16px/1.2 Manrope,sans-serif;
+  letter-spacing:0;
+  text-align:center;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  overflow:hidden;
+  text-shadow:none;
+  pointer-events:auto;
+  transition:opacity .12s linear,background .18s ease;
+}
+.cesium-mars-hero button.mars-poi-label:hover,
+.cesium-mars-hero button.mars-poi-label:focus-visible {
+  background:#141e25;
+  border-color:#f2a477;
+}
+.cesium-mars-hero .mars-site-label {
+  padding:6px 9px;
+  font-size:12px;
+  pointer-events:none;
+}
+@media(max-width:600px) {
+  .cesium-mars-hero .mars-poi-label { max-width:180px; padding:6px 9px; font-size:13px; }
+  .cesium-mars-hero .mars-site-label { font-size:11px; }
+}

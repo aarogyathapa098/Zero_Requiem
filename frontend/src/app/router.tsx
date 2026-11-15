@@ -6,6 +6,7 @@ const MenuScreen = lazy(() => import("../modes/game/screens/MenuScreen"));
 const CutsceneScreen = lazy(() => import("../modes/game/screens/CutsceneScreen"));
 const LoadingScreen = lazy(() => import("../modes/game/screens/LoadingScreen"));
 const MapMode = lazy(() => import("../modes/map/MapMode"));
+const AboutPage = lazy(() => import("../modes/map/AboutPage"));
 const ScanningScreen = lazy(() => import("../modes/game/screens/ScanningScreen"));
 const CharacterDiscover = lazy(() => import("../modes/game/screens/CharacterDiscover"));
 const BattleScreen = lazy(() => import("../modes/game/screens/BattleScreen"));
@@ -13,6 +14,7 @@ const BattleScreen = lazy(() => import("../modes/game/screens/BattleScreen"));
 export const router = createBrowserRouter([
   { path: "/", element: <Suspense fallback={null}><MapMode /></Suspense> },
   { path: "/map", element: <Suspense fallback={null}><MapMode /></Suspense> },
+  { path: "/about", element: <Suspense fallback={null}><AboutPage /></Suspense> },
   { path: "/game", element: <Suspense fallback={null}><MenuScreen /></Suspense> },
   { path: "/menu", element: <Suspense fallback={null}><MenuScreen /></Suspense> },
   { path: "/cutscene", element: <Suspense fallback={null}><CutsceneScreen /></Suspense> },

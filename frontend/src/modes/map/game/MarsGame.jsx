@@ -89,6 +89,11 @@ export default function MarsGame({ reducedMotion = false }) {
     saveSavedProgress(game.current)
   }, [])
 
+  const handleOpenGameMode = useCallback(() => {
+    persistCurrentState()
+    navigate('/game')
+  }, [navigate, persistCurrentState])
+
   const openRoverRecord = useCallback(record => {
     if (!record) return
     keys.current.clear()
@@ -666,12 +671,9 @@ export default function MarsGame({ reducedMotion = false }) {
         <button
           type="button"
           className="mars-menu-btn"
-          onClick={() => {
-            persistCurrentState()
-            navigate('/')
-          }}
+          onClick={handleOpenGameMode}
         >
-          ← Main Menu
+          🎮 Game Menu
         </button>
 
         <div className={`mars-tracker-card${allScanned ? ' is-complete' : ''}`} role="status">

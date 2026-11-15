@@ -1,0 +1,226 @@
+/* ==========================================================================
+   MARS 3D MODEL SCREEN - ORBITAL ATLAS VIEW
+   ========================================================================== */
+
+.mars-3d-screen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, #1e100c 0%, #0d141e 65%, #040609 100%);
+  color: #eeeee7;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+}
+
+.mars-3d-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.mars-3d-canvas-wrap .simple-canvas {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: none;
+  cursor: grab;
+}
+
+.mars-3d-canvas-wrap .simple-canvas:active {
+  cursor: grabbing;
+}
+
+/* Starfield backdrop */
+.mars-3d-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 100px 150px, #e3f2fd, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 240px 80px, #ffe0b2, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 450px 300px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 700px 120px, #bbdefb, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 950px 420px, #fff8e1, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 1200px 210px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 1400px 650px, #e1f5fe, rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 550px 550px;
+  opacity: 0.65;
+}
+
+/* Top Left Branding & Mission Header */
+.mars-3d-header {
+  position: absolute;
+  top: 24px;
+  left: clamp(20px, 4vw, 48px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.mars-3d-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255, 120, 50, 0.4);
+}
+
+.mars-3d-brand span {
+  color: #f2a477;
+}
+
+.mars-3d-sub {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: rgba(200, 215, 230, 0.65);
+  text-transform: uppercase;
+}
+
+/* Bottom Telemetry HUD */
+.mars-3d-hud {
+  position: absolute;
+  bottom: 24px;
+  left: clamp(20px, 4vw, 48px);
+  z-index: 10;
+  display: flex;
+  gap: 20px;
+  pointer-events: none;
+}
+
+.mars-3d-hud-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px;
+  background: rgba(10, 16, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+}
+
+.mars-3d-hud-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: #8c9ba5;
+  text-transform: uppercase;
+}
+
+.mars-3d-hud-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffb088;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Interaction Hint */
+.mars-3d-hint {
+  position: absolute;
+  bottom: 24px;
+  right: clamp(20px, 4vw, 48px);
+  z-index: 10;
+  font-size: 11px;
+  color: rgba(180, 195, 210, 0.6);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  background: rgba(8, 14, 22, 0.6);
+  padding: 6px 12px;
+  border-radius: 6px;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Top-Right Gamified Game Mode Button */
+.mars-gamemode-topright-btn {
+  all: unset;
+  position: fixed;
+  top: 24px;
+  right: clamp(20px, 4vw, 48px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 10px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 140, 50, 0.55);
+  background: linear-gradient(135deg, rgba(14, 23, 34, 0.94) 0%, rgba(26, 18, 30, 0.92) 100%);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.65),
+    0 0 16px rgba(255, 110, 30, 0.25),
+    inset 0 0 14px rgba(255, 140, 50, 0.12);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.2s ease,
+              box-shadow 0.2s ease,
+              background 0.2s ease;
+  user-select: none;
+  overflow: hidden;
+  max-width: 340px;
+  pointer-events: auto;
+}
+
+.mars-gamemode-topright-btn::before {
+  content: "";
+  position: absolute;
+  inset: -100% 0;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 180, 100, 0.18) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+
+.mars-gamemode-topright-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.mars-gamemode-topright-btn:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: rgba(255, 175, 80, 0.95);
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.75),
+    0 0 24px rgba(255, 120, 40, 0.5),
+    inset 0 0 18px rgba(255, 160, 60, 0.25);
+}
+
+.mars-gamemode-topright-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+@media (max-width: 760px) {
+  .mars-gamemode-topright-btn {
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px 6px 8px;
+    gap: 8px;
+    max-width: calc(100vw - 24px);
+  }
+  .mars-3d-header {
+    top: 12px;
+    left: 12px;
+  }
+  .mars-3d-brand {
+    font-size: 16px;
+  }
+  .mars-3d-hud {
+    display: none;
+  }
+  .mars-3d-hint {
+    display: none;
+  }
+}

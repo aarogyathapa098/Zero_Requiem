@@ -33,6 +33,12 @@ export default function MenuScreen() {
     leaveTimerRef.current = window.setTimeout(() => navigate("/cutscene"), 550);
   };
 
+  const handleMapMode = () => {
+    if (leaving) return;
+    setLeaving(true);
+    leaveTimerRef.current = window.setTimeout(() => navigate("/"), 400);
+  };
+
   useEffect(() => {
     return () => {
       if (leaveTimerRef.current !== null) window.clearTimeout(leaveTimerRef.current);
@@ -573,6 +579,28 @@ export default function MenuScreen() {
       <div className="menu-sky" />
       <canvas ref={starsRef} className="menu-stars" aria-hidden="true" />
       <canvas ref={glRef} className="menu-gl" aria-hidden="true" />
+
+      {/* Top Left: Map Mode Gamified Button */}
+      <button
+        type="button"
+        className="menu-mapmode-btn"
+        onClick={handleMapMode}
+        aria-label="Switch to Map Mode: Explore Mars surface and rover trail"
+      >
+        <div className="menu-mapmode-icon" aria-hidden="true">
+          <span>🗺️</span>
+        </div>
+        <div className="menu-mapmode-text">
+          <div className="menu-mapmode-header">
+            <span className="menu-mapmode-title">MAP MODE</span>
+            <span className="menu-mapmode-tag">SURFACE</span>
+          </div>
+          <span className="menu-mapmode-sub">
+            Explore Mars surface & rover trail
+          </span>
+        </div>
+        <span className="menu-mapmode-arrow" aria-hidden="true">➔</span>
+      </button>
 
       <div className="menu-panel" ref={panelRef}>
         <img className="menu-logo" alt="Project: Zero Requiem" src={logoUrl} />

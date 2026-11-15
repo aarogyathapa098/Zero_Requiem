@@ -1,0 +1,30 @@
+# Node
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# NASA data - large binary files (>.tif, .gpkg, .gdb) must NOT be tracked in git
+# Use Git LFS or store externally if needed
+**/nasa-data/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

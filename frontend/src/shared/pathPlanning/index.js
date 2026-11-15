@@ -42,3 +42,12 @@ export { chooseSearchWindow, createMarsGridField, SEARCH_LAYERS } from './core/g
 export { planRoute, planRouteOnField } from './core/planRoute.js'
 export { pathToLonLat } from './core/coordinates.js'
 export { computePathMetrics } from './metrics/pathMetrics.js'
+export { assessRouteEnvironment } from './metrics/environmentalAssessment.js'
+export { buildRecommendation, compareRouteMetrics } from './recommendations/routeRecommendation.js'
+export {
+  DEFAULT_TRAVEL_SPEED_CONFIG,
+  MARTIAN_SOL_SECONDS,
+  estimateTravelTime,
+  formatMartianSols,
+  formatTravelTime,
+} from './metrics/travelTime.js'

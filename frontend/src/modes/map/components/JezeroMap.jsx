@@ -11,7 +11,10 @@ import {
   ROUTE_OBJECTIVES,
   createMarsGridField,
   planRouteOnField,
+  assessRouteEnvironment,
+  buildRecommendation,
 } from '../../../shared/pathPlanning/index.js'
+import { getLatestMedaWeather } from '../../../shared/environment/index.js'
 import './jezeroMap.css'
 
 const RADIUS = 3396190
@@ -82,6 +85,9 @@ export default function JezeroMap({ onBack }) {
   const [routeGoal, setRouteGoal] = useState(null)
   const [routeObjective, setRouteObjective] = useState(DEFAULT_ROUTE_OBJECTIVE)
   const [routeResult, setRouteResult] = useState(null)
+  const [routeAlternative, setRouteAlternative] = useState(null)
+  const [routeRecommendation, setRouteRecommendation] = useState(null)
+  const [routeWeather, setRouteWeather] = useState(null)
   const [routeBusy, setRouteBusy] = useState(false)
   const [routeError, setRouteError] = useState('')
   const routeFieldRef = useRef(null)
@@ -187,6 +193,9 @@ export default function JezeroMap({ onBack }) {
     routeFieldKeyRef.current = ''
     setRouteBusy(false)
     setRouteResult(null)
+    setRouteAlternative(null)
+    setRouteRecommendation(null)
+    setRouteWeather(null)
     setRouteError('')
     if (routePickTarget === 'start') {
       setRouteStart(next)
@@ -212,6 +221,9 @@ export default function JezeroMap({ onBack }) {
     routeFieldKeyRef.current = ''
     setRouteBusy(false)
     setRouteResult(null)
+    setRouteAlternative(null)
+    setRouteRecommendation(null)
+    setRouteWeather(null)
     setRouteError('')
     setRouteStart(null)
     setRouteGoal(null)
@@ -254,13 +266,30 @@ export default function JezeroMap({ onBack }) {
         routeFieldRef.current = field
         routeFieldKeyRef.current = key
       }
+      const otherObjective = selectedObjective === ROUTE_OBJECTIVES.LOWEST_TRAVERSAL_COST
+        ? ROUTE_OBJECTIVES.SHORTEST_DISTANCE
+        : ROUTE_OBJECTIVES.LOWEST_TRAVERSAL_COST
       const result = planRouteOnField(field, {
         start: routeStart,
         goal: routeGoal,
         objective: selectedObjective,
       })
+      const alternative = planRouteOnField(field, {
+        start: routeStart,
+        goal: routeGoal,
+        objective: otherObjective,
+      })
+      const weather = await getLatestMedaWeather()
       if (token !== routeTokenRef.current) return
-      setRouteResult(result)
+      const environment = assessRouteEnvironment(result, weather)
+      const resultWithEnvironment = { ...result, environment }
+      const recommendation = buildRecommendation(resultWithEnvironment, alternative, {
+        primaryObjective: ROUTE_OBJECTIVE_LABELS[selectedObjective],
+      })
+      setRouteResult(resultWithEnvironment)
+      setRouteAlternative(alternative)
+      setRouteWeather(weather)
+      setRouteRecommendation(recommendation)
       setRouteError('')
     } catch (error) {
       if (token !== routeTokenRef.current) return
@@ -486,6 +515,7 @@ export default function JezeroMap({ onBack }) {
       {routeResult.ok ? <>
         <div className="jezero-route-metrics">
           <article><small>Distance</small><strong>{formatRouteDistance(routeResult.distanceMetres)}</strong><span>{formatRouteNumber(routeResult.distanceKm, 2)} km</span></article>
+          <article><small>Estimated duration</small><strong>{Math.floor((routeResult.metrics.travelTime?.minutes || 0) / 60)} h {Math.round((routeResult.metrics.travelTime?.minutes || 0) % 60)} min</strong><span>{formatRouteNumber(routeResult.metrics.travelTime?.sols, 3)} sols · {routeResult.metrics.travelTime?.mode || 'baseline'} estimate</span></article>
           <article><small>Traversal cost</small><strong>{formatRouteNumber(routeResult.traversalCost, 2)}</strong><span>unitless · distance × cost</span></article>
           <article><small>Path</small><strong>{routeResult.metrics.cellCount} cells</strong><span>{routeResult.metrics.directionChanges} direction changes</span></article>
           <article><small>Elevation</small><strong>{formatRouteNumber(routeResult.metrics.startElevation, 1, ' m')}</strong><span>to {formatRouteNumber(routeResult.metrics.endElevation, 1, ' m')}</span></article>
@@ -498,7 +528,33 @@ export default function JezeroMap({ onBack }) {
           <span className="jezero-route-geology-title">Geology along route</span>
           {routeResult.geology.units.map(unit => <span key={unit.classId} className={unit.mapped ? 'mapped' : 'unmapped'}>{unit.symbol ? `${unit.symbol} · ` : ''}{unit.name}<b>{unit.cells}</b></span>)}
         </div>
-        <p className="jezero-route-note">Traversal cost is the grid’s unitless movement-cost multiplier integrated over distance — not energy use or travel time. Geology is informational and does not influence the route.</p>
+        {routeResult.environment && <section className="jezero-route-environment">
+          <span className="jezero-route-section-title">Environmental assessment</span>
+          <div className="jezero-route-env-grid">
+            <article><small>Source</small><strong>{routeResult.environment.source || '—'}</strong><span>{routeResult.environment.sourceType || '—'}</span></article>
+            <article><small>Freshness</small><strong>{routeResult.environment.freshness?.status || 'unavailable'}</strong><span>{routeResult.environment.freshness?.ageDays != null ? `${Math.round(routeResult.environment.freshness.ageDays)} days old` : 'no observation'}</span></article>
+            <article><small>Air temperature</small><strong>{routeResult.environment.values.minAirTempC != null ? `${routeResult.environment.values.minAirTempC}°C to ${routeResult.environment.values.maxAirTempC}°C` : '—'}</strong><span>{routeResult.environment.values.season || '—'}</span></article>
+            <article><small>Pressure</small><strong>{routeResult.environment.values.pressurePa != null ? `${routeResult.environment.values.pressurePa} Pa` : '—'}</strong><span>Sol {routeResult.environment.observation?.sol ?? '—'}</span></article>
+          </div>
+          <p className="jezero-route-note">{routeResult.environment.spatialRelevance === 'point-observation-only' ? 'Environmental values are point observations at the Perseverance rover location and do not describe conditions along the entire route.' : ''}</p>
+          {routeResult.environment.warnings.map((warning, index) => <p key={index} className="jezero-route-warning">{warning}</p>)}
+          {routeResult.environment.cautions.map((caution, index) => <p key={index} className="jezero-route-caution">{caution}</p>)}
+        </section>}
+        {routeRecommendation && <section className="jezero-route-recommendation">
+          <span className="jezero-route-section-title">Why this route?</span>
+          <p className="jezero-route-recommendation-summary">Recommendation confidence: <b>{routeRecommendation.confidence}</b></p>
+          <ul className="jezero-route-reasons">{routeRecommendation.reasons.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+          {routeRecommendation.warnings.length > 0 && <ul className="jezero-route-warnings">{routeRecommendation.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}
+        </section>}
+        {routeAlternative?.ok && routeResult?.ok && <section className="jezero-route-alternative">
+          <span className="jezero-route-section-title">Alternative route comparison</span>
+          <div className="jezero-route-alt-grid">
+            <article><small>Primary · {ROUTE_OBJECTIVE_LABELS[routeResult.objective]}</small><strong>{formatRouteDistance(routeResult.distanceMetres)}</strong><span>cost {formatRouteNumber(routeResult.traversalCost, 2)} · {Math.floor((routeResult.metrics.travelTime?.minutes || 0) / 60)} h {Math.round((routeResult.metrics.travelTime?.minutes || 0) % 60)} min</span></article>
+            <article><small>Alternative · {ROUTE_OBJECTIVE_LABELS[routeAlternative.objective]}</small><strong>{formatRouteDistance(routeAlternative.distanceMetres)}</strong><span>cost {formatRouteNumber(routeAlternative.traversalCost, 2)} · {Math.floor((routeAlternative.metrics.travelTime?.minutes || 0) / 60)} h {Math.round((routeAlternative.metrics.travelTime?.minutes || 0) % 60)} min</span></article>
+          </div>
+          {routeRecommendation?.sameRoute && <p className="jezero-route-note">Both objectives produced the same route for this start and destination.</p>}
+        </section>}
+        <p className="jezero-route-note">Traversal cost is the grid’s unitless movement-cost multiplier integrated over distance — not energy use or travel time. Travel time is an estimate based on configurable speed assumptions. Geology is informational and does not influence the route.</p>
         <details className="jezero-route-details">
           <summary>Search, window and validation details</summary>
           <div>

@@ -7,6 +7,7 @@ import {
 } from '../constants.js'
 import { PathPlanningError } from '../errors.js'
 import { computePathMetrics } from '../metrics/pathMetrics.js'
+import { estimateTravelTime } from '../metrics/travelTime.js'
 import { pathToLonLat } from './coordinates.js'
 import {
   cellToIndex,
@@ -83,6 +84,8 @@ export function planRouteOnField(field, {
   maxExpansions = 0,
   shouldCancel = null,
   cancelInterval,
+  travelSpeedConfig = null,
+  environmentalAssessment = null,
 } = {}) {
   if (!field || !Number.isInteger(field.cellCount)) {
     return emptyResult(ROUTE_STATUS.ERROR, 'A valid search field is required.', { objective })
@@ -160,6 +163,7 @@ export function planRouteOnField(field, {
 
   const publicPath = pathToLonLat(field, search.path)
   const metrics = computePathMetrics(field, search.path, { objective })
+  metrics.travelTime = estimateTravelTime(field, search.path, travelSpeedConfig || undefined)
   const validation = validatePath(field, {
     path: search.path,
     startIndex,
@@ -189,6 +193,7 @@ export function planRouteOnField(field, {
     metrics,
     validation,
     geology: metrics.geology,
+    environment: environmentalAssessment ?? null,
     searchWindow: stats.window,
     stats,
     details: null,

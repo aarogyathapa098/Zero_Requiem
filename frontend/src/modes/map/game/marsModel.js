@@ -3,7 +3,7 @@ import { getGeologyAt } from '../data/sim3464.js'
 import { PERSEVERANCE_PATH } from './marsTraverse.js'
 import { ROVER_RECORDS, SCRAP_PICKUPS, SUPPLY_PICKUPS } from '../data/roverRecords.js'
 import { CHARACTERS, getCharacterById } from '../../game/data/characters.js'
-import { isMissionUnlocked, loadMissionProgress } from '../../game/data/missions.js'
+import { isMissionUnlocked, loadMissionProgress, registerMapProgressAccessors } from '../../game/data/missions.js'
 
 export const MAP_SIZE = { width: 2400, height: 1800 }
 export const CAMP = { x: 2220, y: 1050 }
@@ -106,6 +106,19 @@ export const SPECIES = [
   { id: 'glimmer', name: 'Glimmer', kind: 'Crystal rover', color: '#a5d8c9', dark: '#568e8a', hp: 44, attack: 10, reward: 14, weakness: 'Scan the brightest crystal before pulsing.', description: 'An imagined crystal creature that flickers across the lakebed. Real Mars has no confirmed creatures like this.' },
 ]
 
+function defaultRoamingAnchors() {
+  const anchors = {}
+  for (const character of CHARACTERS) {
+    if (!character.isMission) {
+      anchors[character.slot] = {
+        x: character.alienPos?.x ?? 980,
+        y: character.alienPos?.y ?? 640,
+      }
+    }
+  }
+  return anchors
+}
+
 function createRandomRoamingAnchors() {
   const anchors = {}
   for (const character of CHARACTERS) {
@@ -135,7 +148,7 @@ export function newProgress() {
     creatureOrder: createRandomizedCreatureOrder(),
     scannedSlots: [],
     scannedAnchors: {},
-    roamingAnchors: createRandomRoamingAnchors(),
+    roamingAnchors: defaultRoamingAnchors(),
     trailElapsed: 0,
     roverReached: false,
     vitals: defaultVitals(),
@@ -416,6 +429,15 @@ export function restoreProgress(value) {
     }
     clean.scannedAnchors = anchors
   }
+  if (value.roamingAnchors && typeof value.roamingAnchors === 'object') {
+    const rAnchors = { ...clean.roamingAnchors }
+    for (const [slotKey, item] of Object.entries(value.roamingAnchors)) {
+      if (item && Number.isFinite(item.x) && Number.isFinite(item.y)) {
+        rAnchors[slotKey] = { x: item.x, y: item.y }
+      }
+    }
+    clean.roamingAnchors = rAnchors
+  }
   if (Number.isFinite(value.trailElapsed) && value.trailElapsed >= 0) {
     clean.trailElapsed = value.trailElapsed
   }
@@ -484,9 +506,14 @@ export function saveSavedProgress(progress) {
 }
 
 export function resetSavedProgress() {
-  const fresh = newProgress()
+  const fresh = {
+    ...newProgress(),
+    roamingAnchors: createRandomRoamingAnchors(),
+  }
   return saveSavedProgress(fresh)
 }
+
+registerMapProgressAccessors(loadSavedProgress, saveSavedProgress)
 
 export function markCreatureScanned(slot, characterId) {
   const current = loadSavedProgress()

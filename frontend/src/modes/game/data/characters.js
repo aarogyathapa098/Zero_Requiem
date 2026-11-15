@@ -1,15 +1,15 @@
-import char1 from "../assets/images/characters/1.png";
-import char2 from "../assets/images/characters/2.png";
-import char3 from "../assets/images/characters/3.png";
-import char4 from "../assets/images/characters/4.png";
-import char5 from "../assets/images/characters/5.png";
-import char6 from "../assets/images/characters/6.png";
-import sil1 from "../assets/images/silhouette/1.1.png";
-import sil2 from "../assets/images/silhouette/2.1.png";
-import sil3 from "../assets/images/silhouette/3.1.png";
-import sil4 from "../assets/images/silhouette/4.1.png";
-import sil5 from "../assets/images/silhouette/5.1.png";
-import sil6 from "../assets/images/silhouette/6.1.png";
+const char1 = new URL("../assets/images/characters/1.png", import.meta.url).href;
+const char2 = new URL("../assets/images/characters/2.png", import.meta.url).href;
+const char3 = new URL("../assets/images/characters/3.png", import.meta.url).href;
+const char4 = new URL("../assets/images/characters/4.png", import.meta.url).href;
+const char5 = new URL("../assets/images/characters/5.png", import.meta.url).href;
+const char6 = new URL("../assets/images/characters/6.png", import.meta.url).href;
+const sil1 = new URL("../assets/images/silhouette/1.1.png", import.meta.url).href;
+const sil2 = new URL("../assets/images/silhouette/2.1.png", import.meta.url).href;
+const sil3 = new URL("../assets/images/silhouette/3.1.png", import.meta.url).href;
+const sil4 = new URL("../assets/images/silhouette/4.1.png", import.meta.url).href;
+const sil5 = new URL("../assets/images/silhouette/5.1.png", import.meta.url).href;
+const sil6 = new URL("../assets/images/silhouette/6.1.png", import.meta.url).href;
 import { MISSIONS, ROAMING_ALIENS } from "./missions.js";
 
 const SPRITES = [

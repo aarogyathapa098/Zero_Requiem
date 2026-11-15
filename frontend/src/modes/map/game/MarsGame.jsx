@@ -117,6 +117,11 @@ export default function MarsGame({ reducedMotion = false }) {
     setMissionState(freshMission)
   }, [])
 
+  const handleOpenGameMode = useCallback(() => {
+    persistCurrentState()
+    navigate('/game')
+  }, [navigate, persistCurrentState])
+
   const openRoverRecord = useCallback(record => {
     if (!record) return
     keys.current.clear()
@@ -880,12 +885,9 @@ export default function MarsGame({ reducedMotion = false }) {
           <button
             type="button"
             className="mars-menu-btn"
-            onClick={() => {
-              persistCurrentState()
-              navigate('/')
-            }}
+            onClick={handleOpenGameMode}
           >
-            ← Main Menu
+            ← Game Menu
           </button>
         </div>
 

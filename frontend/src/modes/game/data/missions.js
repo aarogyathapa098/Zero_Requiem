@@ -1,7 +1,29 @@
-import { loadSavedProgress, saveSavedProgress } from "../../map/game/marsModel.js";
 import { ROVER_RECORDS } from "../../map/data/roverRecords.js";
 
 export const MISSION_STORAGE_KEY = "zero-requiem-missions-v1";
+const MAP_SAVE_KEY = "orbital-mars-expedition-v3";
+
+let mapProgressAccessors = {
+  load: () => {
+    try {
+      const raw = localStorage.getItem(MAP_SAVE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+  save: (data) => {
+    try {
+      localStorage.setItem(MAP_SAVE_KEY, JSON.stringify(data));
+    } catch {
+      /* ignore */
+    }
+  },
+};
+
+export function registerMapProgressAccessors(load, save) {
+  mapProgressAccessors = { load, save };
+}
 
 /**
  * Only Missions 1, 2, and 5 are active story missions.
@@ -345,24 +367,26 @@ export function recordAlienDefeated(characterId) {
   });
 
   try {
-    const mapProgress = loadSavedProgress();
-    const scrapId = `scrap-${entity.id}`;
-    const collectedScrap =
-      entity.isMission && !mapProgress.collectedScrap.includes(scrapId)
-        ? [...mapProgress.collectedScrap, scrapId]
-        : mapProgress.collectedScrap;
+    const mapProgress = mapProgressAccessors.load();
+    if (mapProgress) {
+      const scrapId = `scrap-${entity.id}`;
+      const collectedScrap =
+        entity.isMission && !(mapProgress.collectedScrap || []).includes(scrapId)
+          ? [...(mapProgress.collectedScrap || []), scrapId]
+          : mapProgress.collectedScrap || [];
 
-    const scannedSlots = !mapProgress.scannedSlots.includes(entity.slot)
-      ? [...mapProgress.scannedSlots, entity.slot]
-      : mapProgress.scannedSlots;
+      const scannedSlots = !(mapProgress.scannedSlots || []).includes(entity.slot)
+        ? [...(mapProgress.scannedSlots || []), entity.slot]
+        : mapProgress.scannedSlots || [];
 
-    saveSavedProgress({
-      ...mapProgress,
-      scannedSlots,
-      collectedScrap,
-      defeated: Math.max(mapProgress.defeated || 0, defeatedAliens.length),
-      research: (mapProgress.research || 0) + 20,
-    });
+      mapProgressAccessors.save({
+        ...mapProgress,
+        scannedSlots,
+        collectedScrap,
+        defeated: Math.max(mapProgress.defeated || 0, defeatedAliens.length),
+        research: (mapProgress.research || 0) + 20,
+      });
+    }
   } catch {
     /* ignore sync errors */
   }
@@ -397,29 +421,31 @@ export function completeMissionTask(missionId) {
   });
 
   try {
-    const mapProgress = loadSavedProgress();
-    const updated = { ...mapProgress };
+    const mapProgress = mapProgressAccessors.load();
+    if (mapProgress) {
+      const updated = { ...mapProgress };
 
-    if (mission.id === 1) {
-      updated.suitPower = 100;
-      updated.inventoryCounts = {
-        food: (mapProgress.inventoryCounts?.food || 0) + 1,
-        water: (mapProgress.inventoryCounts?.water || 0) + 1,
-        oxygen: (mapProgress.inventoryCounts?.oxygen || 0) + 1,
-      };
-    } else if (mission.id === 2) {
-      updated.roverReached = true;
-      updated.research = (mapProgress.research || 0) + 40;
-    } else if (mission.id === 5) {
-      const allRecordIds = ROVER_RECORDS.map((r) => r.id);
-      updated.collectedRecords = [
-        ...new Set([...(mapProgress.collectedRecords || []), ...allRecordIds]),
-      ];
-      updated.beacon = true;
-      updated.research = (mapProgress.research || 0) + 80;
+      if (mission.id === 1) {
+        updated.suitPower = 100;
+        updated.inventoryCounts = {
+          food: (mapProgress.inventoryCounts?.food || 0) + 1,
+          water: (mapProgress.inventoryCounts?.water || 0) + 1,
+          oxygen: (mapProgress.inventoryCounts?.oxygen || 0) + 1,
+        };
+      } else if (mission.id === 2) {
+        updated.roverReached = true;
+        updated.research = (mapProgress.research || 0) + 40;
+      } else if (mission.id === 5) {
+        const allRecordIds = ROVER_RECORDS.map((r) => r.id);
+        updated.collectedRecords = [
+          ...new Set([...(mapProgress.collectedRecords || []), ...allRecordIds]),
+        ];
+        updated.beacon = true;
+        updated.research = (mapProgress.research || 0) + 80;
+      }
+
+      mapProgressAccessors.save(updated);
     }
-
-    saveSavedProgress(updated);
   } catch {
     /* ignore sync errors */
   }

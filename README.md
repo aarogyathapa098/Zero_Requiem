@@ -129,10 +129,10 @@ The application is a React 19 single-page app with React Router, TypeScript and 
 
 - Optional 3D terrain uses Cesium ion asset `3644333`. Set `VITE_CESIUM_ION_TOKEN=your_token` in `frontend/.env.local` to enable it. `VITE_` variables are exposed to browser code, so use a scoped public client token.
 - Orbital CTX, HiRISE, and MOLA tiles require internet access and a server that provides the Mars tile proxy. CTX and HiRISE coverage is regional.
-- The SOLBOUND terrain/geology grid is optional. Its eight GeoTIFFs and legend belong in `frontend/src/modes/map/nasa-data/output/`. That directory is gitignored and absent from a clean clone. See the [Mars grid guide](frontend/src/modes/map/docs/MARS_GRID.md) for filenames, validation, and hosting details.
+- The S.U.N.A IV terrain/geology grid is optional. Its eight GeoTIFFs and legend belong in `frontend/src/modes/map/nasa-data/output/`. That directory is gitignored and absent from a clean clone. See the [Mars grid guide](frontend/src/modes/map/docs/MARS_GRID.md) for filenames, validation, and hosting details.
 - The checked-in Jezero relief and geology images work independently of the optional grid. The original 20 m CTX DEM TIFF is not bundled.
 
-### Optional SOLBOUND raster grid
+### Optional S.U.N.A IV raster grid
 
 The grid is a separate, read-only data layer for Jezero. It contains elevation, slope, roughness, source-DEM validity, movement cost, navigation validity, geology ID, and geology coverage rasters, plus a geology legend. Its verified array shape is **5,067 rows by 4,456 columns** at **20 m per cell**. Geology coverage and terrain validity are different flags: a cell may have one without the other.
 
@@ -174,7 +174,7 @@ These are the main dataset and mission references. The code also links individua
 
 - The Mars surface texture is credited to [Solar System Scope](https://www.solarsystemscope.com/textures/), whose texture page describes its CC BY 4.0 terms. The three-dimensional rover assets and CZML sample came from [Cesium sample data](https://github.com/CesiumGS/cesium/tree/main/Apps/SampleData).
 - The local font license files are `frontend/public/fonts/OFL-Manrope.txt` and `frontend/public/fonts/OFL-Barlow.txt`. Icons come from `lucide-react` under its package license.
-- The Jezero relief PNG was derived from a supplied CTX DEM file. The original TIFF is not checked in. The optional SOLBOUND rasters are also excluded from Git because of their size.
+- The Jezero relief PNG was derived from a supplied CTX DEM file. The original TIFF is not checked in. The optional S.U.N.A IV rasters are also excluded from Git because of their size.
 - There is **no repository-wide `LICENSE` file** in this checkout. Do not assume that a code license, if added later, also licenses third-party imagery, fonts, models, or datasets. Keep the source and license information for each asset with the project submission.
 
 See [asset sources and licenses](frontend/src/modes/map/docs/ASSETS.md) for additional credits and terms. Cite all NASA, USGS, and other sources used in a Space Apps submission. USGS-authored information is generally public domain, but individual third-party images can have separate terms. The [2026 Space Apps participant terms](https://www.spaceappschallenge.org/legal/) require source citations and applicable license documentation for non-NASA materials.

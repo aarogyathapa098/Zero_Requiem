@@ -62,6 +62,17 @@
   border-radius: 50%;
 }
 
+/* ── Sound Visualizer Button: Top-Left, Right Side of Minimap ─────────────── */
+.mars-sound-container {
+  position: absolute;
+  top: 72px;
+  left: 224px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ── Top-Right Scrap Trail Tracker HUD ────────────────────────────────────── */
 .mars-tracker-hud {
   position: absolute;
@@ -1052,6 +1063,13 @@
   .mars-minimap canvas {
     width: 134px;
     height: 134px;
+  }
+
+  .mars-sound-container {
+    top: 48px;
+    left: 168px;
+    transform: scale(0.85);
+    transform-origin: top left;
   }
 
   .mars-tracker-hud {

@@ -17,6 +17,8 @@ import { windAt } from './marsWeather'
 import { VitalsHUD, Icons } from './VitalsHUD'
 import HoloPhoneHUD from './HoloPhoneHUD'
 import RoverRecordModal from './RoverRecordModal'
+import SoundButton from '../../game/components/buttons/SoundButton.jsx'
+import { environmentAudio } from '../../../shared/audio/environmentAudio.js'
 import './mars.css'
 
 const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'])
@@ -188,6 +190,10 @@ export default function MarsGame({ reducedMotion = false }) {
       },
     })
   }, [navigate, persistCurrentState])
+
+  useEffect(() => {
+    environmentAudio.startFromMap()
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(persistCurrentState, 2500)
@@ -659,6 +665,11 @@ export default function MarsGame({ reducedMotion = false }) {
           role="img"
           aria-label="Circular local minimap tracking unknown creatures feeding on rover scrap"
         />
+      </div>
+
+      {/* Sound Visualizer Button: Top Left, Right side of the Minimap */}
+      <div className="mars-sound-container" aria-label="Environment Sound Visualizer">
+        <SoundButton size={60} />
       </div>
 
       {/* Scrap Trail & Objective HUD in Top Right */}

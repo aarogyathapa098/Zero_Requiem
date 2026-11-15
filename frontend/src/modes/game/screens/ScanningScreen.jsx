@@ -3,7 +3,12 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CharacterDiscover from "./CharacterDiscover";
 import MissionGuideModal from "../components/MissionGuideModal";
 import { CHARACTERS } from "../data/characters";
-import { getActiveSerialMission, loadMissionProgress } from "../data/missions";
+import {
+  getActiveSerialMission,
+  isMissionUnlocked,
+  loadMissionProgress,
+  MISSIONS,
+} from "../data/missions";
 import { loadSavedProgress, markCreatureScanned } from "../../map/game/marsModel";
 
 const PILL_BUTTON_STYLE = {
@@ -39,11 +44,10 @@ export default function ScanningScreen({ initialIndex = 0 }) {
 
   const resolvedInitialIndex = (() => {
     const activeSerial = getActiveSerialMission(missionProgress);
-    const maxAllowedId = activeSerial ? activeSerial.id : 6;
+    const maxAllowedId = activeSerial ? activeSerial.id : 5;
     if (paramCharId !== null) {
       const requestedId = Number(paramCharId);
-      const isUnlocked =
-        requestedId === 1 || missionProgress.completedMissions.includes(requestedId - 1);
+      const isUnlocked = isMissionUnlocked(requestedId, missionProgress);
       const targetId = isUnlocked ? requestedId : maxAllowedId;
       const foundIndex = CHARACTERS.findIndex((item) => item.id === targetId);
       if (foundIndex !== -1) return foundIndex;
@@ -127,7 +131,7 @@ export default function ScanningScreen({ initialIndex = 0 }) {
           color: "#e6fffb",
         }}
       >
-        ❖ Missions ({missionProgress.completedMissions.length}/6)
+        ❖ Missions ({missionProgress.completedMissions.length}/{MISSIONS.length})
       </button>
 
       {fromMap ? (

@@ -10,7 +10,7 @@ import sil3 from "../assets/images/silhouette/3.1.png";
 import sil4 from "../assets/images/silhouette/4.1.png";
 import sil5 from "../assets/images/silhouette/5.1.png";
 import sil6 from "../assets/images/silhouette/6.1.png";
-import { MISSIONS } from "./missions.js";
+import { MISSIONS, ROAMING_ALIENS } from "./missions.js";
 
 const SPRITES = [
   { id: 1, character: char1, silhouette: sil1 },
@@ -21,37 +21,46 @@ const SPRITES = [
   { id: 6, character: char6, silhouette: sil6 },
 ];
 
-export const CHARACTERS = MISSIONS.map((mission) => {
-  const sprite = SPRITES.find((item) => item.id === mission.characterId) || SPRITES[0];
+const ALL_ALIEN_DEFS = [...MISSIONS, ...ROAMING_ALIENS].sort(
+  (a, b) => a.characterId - b.characterId
+);
+
+export const CHARACTERS = ALL_ALIEN_DEFS.map((entry) => {
+  const sprite = SPRITES.find((item) => item.id === entry.characterId) || SPRITES[0];
   return {
-    id: mission.characterId,
-    slot: mission.slot,
-    code: mission.code,
-    name: mission.alienName,
-    alienNumber: mission.alienNumber,
-    alienTitle: mission.alienTitle,
-    missionNumber: mission.missionNumber,
-    missionTitle: mission.title,
-    behavior: mission.alienBehavior,
-    scrapName: mission.scrapName,
-    scrapBattleText: mission.scrapBattleText,
-    scrapOrigin: mission.scrapOrigin,
-    targetObject: mission.targetObject,
-    taskActionLabel: mission.taskActionLabel,
-    taskDescription: mission.taskDescription,
-    systemEffectLabel: mission.systemEffectLabel,
-    arrivalBriefing: mission.arrivalBriefing,
-    completionStory: mission.completionStory,
-    locationTag: mission.locationTag,
-    alienPos: mission.alienPos,
-    cratePos: mission.cratePos,
-    enemyLevel: mission.enemyLevel,
-    enemyMaxHp: mission.enemyMaxHp,
-    enemySignatureMove: mission.enemySignatureMove,
+    id: entry.characterId,
+    slot: entry.slot,
+    code: entry.code,
+    isMission: Boolean(entry.isMission),
+    isRoaming: Boolean(entry.isRoaming),
+    prevMissionId: entry.prevMissionId ?? null,
+    name: entry.alienName,
+    alienNumber: entry.alienNumber,
+    alienTitle: entry.alienTitle,
+    missionNumber: entry.missionNumber,
+    missionTitle: entry.title,
+    behavior: entry.alienBehavior,
+    scrapName: entry.scrapName,
+    scrapBattleText: entry.scrapBattleText,
+    scrapOrigin: entry.scrapOrigin,
+    targetObject: entry.targetObject,
+    taskActionLabel: entry.taskActionLabel,
+    taskDescription: entry.taskDescription,
+    systemEffectLabel: entry.systemEffectLabel,
+    arrivalBriefing: entry.arrivalBriefing,
+    completionStory: entry.completionStory,
+    locationTag: entry.locationTag,
+    alienPos: entry.alienPos,
+    cratePos: entry.cratePos,
+    enemyLevel: entry.enemyLevel,
+    enemyMaxHp: entry.enemyMaxHp,
+    enemySignatureMove: entry.enemySignatureMove,
     character: sprite.character,
     silhouette: sprite.silhouette,
   };
 });
+
+export const MISSION_CHARACTERS = CHARACTERS.filter((c) => c.isMission);
 
 export function getCharacterById(id) {
   const numericId = Number(id);

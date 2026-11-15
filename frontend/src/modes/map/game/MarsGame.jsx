@@ -15,10 +15,13 @@ import {
 import { ROVER_RECORDS, SUPPLY_PICKUPS } from '../data/roverRecords'
 import {
   completeMissionTask,
+  getActiveSerialMission,
   loadMissionProgress,
+  MISSIONS,
   resetMissionProgress,
 } from '../../game/data/missions'
 import MissionGuideModal from '../../game/components/MissionGuideModal'
+import WireRepairModal from '../../game/components/WireRepairModal'
 import { createTerrain, renderMap, renderMinimap } from './marsRenderer'
 import { windAt } from './marsWeather'
 import { VitalsHUD, Icons } from './VitalsHUD'
@@ -65,6 +68,7 @@ export default function MarsGame({ reducedMotion = false }) {
   const [missionState, setMissionState] = useState(() => loadMissionProgress())
   const [activeRecord, setActiveRecord] = useState(null)
   const [showMissionGuide, setShowMissionGuide] = useState(false)
+  const [showWireRepair, setShowWireRepair] = useState(false)
   const [storyBanner, setStoryBanner] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
   const toastTimerRef = useRef(null)
@@ -143,8 +147,37 @@ export default function MarsGame({ reducedMotion = false }) {
     setActiveRecord(record)
   }, [persistCurrentState, showToast])
 
+  const executeMissionCompletion = useCallback(creature => {
+    if (!creature || !creature.isMission) return
+    persistCurrentState()
+    const updatedMission = completeMissionTask(creature.characterId)
+    const updatedMap = loadSavedProgress()
+
+    game.current = updatedMap
+    vitals.current = { ...updatedMap.vitals }
+    missionRef.current = updatedMission
+    setVitalsState({ ...updatedMap.vitals })
+    setMissionState(updatedMission)
+
+    showToast(`🔧 Repaired ${creature.targetObject} with ${creature.scrapName}! (${creature.systemEffectLabel})`)
+    const nextSerial = getActiveSerialMission(updatedMission)
+    setStoryBanner({
+      title: `★ Mission ${creature.missionNumber} Complete: ${creature.missionTitle}`,
+      body: creature.completionStory,
+      effect: creature.systemEffectLabel,
+      nextLabel: nextSerial
+        ? `▶ Next Directive Unlocked: Mission ${nextSerial.missionNumber}`
+        : '★ All 3 Missions Accomplished — Historical Reports Recovered',
+    })
+
+    // Mission 5 bonus: open the decrypted crew chronicle modal so player can read it immediately
+    if (creature.missionNumber === 5 && ROVER_RECORDS.length > 0) {
+      setActiveRecord(ROVER_RECORDS[0])
+    }
+  }, [persistCurrentState, showToast])
+
   const handleRepairMissionCrate = useCallback(creature => {
-    if (!creature) return
+    if (!creature || !creature.isMission) return
     keys.current.clear()
     walkTarget.current = null
     pendingCrateSlot.current = null
@@ -161,33 +194,14 @@ export default function MarsGame({ reducedMotion = false }) {
       return
     }
 
-    // Persist current vitals before applying mission repair bonuses
-    persistCurrentState()
-    const updatedMission = completeMissionTask(creature.characterId)
-    const updatedMap = loadSavedProgress()
-
-    game.current = updatedMap
-    vitals.current = { ...updatedMap.vitals }
-    missionRef.current = updatedMission
-    setVitalsState({ ...updatedMap.vitals })
-    setMissionState(updatedMission)
-
-    showToast(`🔧 Repaired ${creature.targetObject} with ${creature.scrapName}! (${creature.systemEffectLabel})`)
-    const nextMissionNum = creature.missionNumber < 6 ? creature.missionNumber + 1 : null
-    setStoryBanner({
-      title: `★ Mission ${creature.missionNumber} Complete: ${creature.missionTitle}`,
-      body: creature.completionStory,
-      effect: creature.systemEffectLabel,
-      nextLabel: nextMissionNum
-        ? `▶ Next Directive Unlocked: Mission ${nextMissionNum}/6`
-        : '★ Final Directive Accomplished — S.U.N.A. IV Uplink Active',
-    })
-
-    // Mission 5 bonus: open the decrypted crew chronicle modal so player can read it immediately
-    if (creature.missionNumber === 5 && ROVER_RECORDS.length > 0) {
-      setActiveRecord(ROVER_RECORDS[0])
+    // Mission 2: Open the Perseverance Rover Wire Repair minigame!
+    if (creature.missionNumber === 2) {
+      setShowWireRepair(true)
+      return
     }
-  }, [persistCurrentState, showToast])
+
+    executeMissionCompletion(creature)
+  }, [executeMissionCompletion, showToast])
 
   useEffect(() => {
     if (!storyBanner) return undefined
@@ -452,11 +466,11 @@ export default function MarsGame({ reducedMotion = false }) {
           return
         }
 
-        // 2. Check nearest unlocked Mission Crate / Repair Target
+        // 2. Check nearest unlocked Mission Crate / Perseverance Rover Repair Target
         let closestCrate = null
         let closestCrateDist = Infinity
         for (const creature of creatures) {
-          if (!creature.unlocked || creature.taskCompleted) continue
+          if (!creature.isMission || !creature.unlocked || creature.taskCompleted) continue
           const d = Math.hypot(
             game.current.player.x - creature.crateX,
             game.current.player.y - creature.crateY
@@ -474,7 +488,7 @@ export default function MarsGame({ reducedMotion = false }) {
           pendingCrateSlot.current !== null &&
           closestCrate &&
           closestCrate.slot === pendingCrateSlot.current &&
-          closestCrateDist <= 38
+          closestCrateDist <= 42
         ) {
           handleRepairMissionCrate(closestCrate)
         }
@@ -624,13 +638,12 @@ export default function MarsGame({ reducedMotion = false }) {
     const clickX = (event.clientX - rect.left - view.width / 2) / view.scale + camera.current.x
     const clickY = (event.clientY - rect.top - view.height / 2) / view.scale + camera.current.y
 
-    // 1. Check if player clicked on an unlocked Mission Crate / Repair Target
-    const clickedCrate = liveCreatures.current.find(
-      creature =>
-        creature.unlocked &&
-        !creature.taskCompleted &&
-        Math.hypot(clickX - creature.crateX, clickY - creature.crateY) <= 24
-    )
+    // 1. Check if player clicked on an unlocked Mission Crate / Perseverance Rover Repair Target
+    const clickedCrate = liveCreatures.current.find(creature => {
+      if (!creature.isMission || !creature.unlocked || creature.taskCompleted) return false
+      const hitRadius = creature.missionNumber === 2 ? 44 : 26
+      return Math.hypot(clickX - creature.crateX, clickY - creature.crateY) <= hitRadius
+    })
     if (clickedCrate) {
       if (
         Math.hypot(
@@ -757,7 +770,8 @@ export default function MarsGame({ reducedMotion = false }) {
     : ['#ff416c', '#ff4b2b']
 
   const activeMissionCreature = getActiveTargetCreature(hudState.creatures)
-  const allMissionsComplete = !activeMissionCreature && missionState.completedMissions.length >= 6
+  const allMissionsComplete =
+    !activeMissionCreature && missionState.completedMissions.length >= MISSIONS.length
 
   const activeNearbyCreature = hudState.nearbySlot !== null
     ? liveCreatures.current.find(c => c.slot === hudState.nearbySlot)
@@ -776,28 +790,31 @@ export default function MarsGame({ reducedMotion = false }) {
   const getSerialStepLabel = () => {
     if (!activeMissionCreature) {
       return {
-        eyebrow: 'S.U.N.A. IV Transmission Broadcasted',
-        title: `All 6 Missions Complete · Secret Mission Accomplished`,
-        sub: 'Survival data & decrypted historical reports transmitted back to Earth.',
+        eyebrow: 'Missions 1, 2 & 5 Accomplished',
+        title: `All ${MISSIONS.length} Missions Complete · Reports Decrypted`,
+        sub: 'Supply Crate, Perseverance Rover & Classified Historical Reports restored.',
       }
     }
     const m = activeMissionCreature
     if (m.stage === 'repair') {
       return {
-        eyebrow: `Mission ${m.missionNumber}/6 · ${m.missionTitle} (Step 3/3: Repair)`,
-        title: `🔧 Use ${m.scrapName} → Fix ${m.targetObject}`,
+        eyebrow: `Mission ${m.missionNumber} · ${m.missionTitle} (Step 3/3: Repair)`,
+        title:
+          m.missionNumber === 2
+            ? `🔧 Go Back to Perseverance Rover & Fix Wires`
+            : `🔧 Use ${m.scrapName} → Fix ${m.targetObject}`,
         sub: m.taskDescription,
       }
     }
     if (m.stage === 'battle') {
       return {
-        eyebrow: `Mission ${m.missionNumber}/6 · ${m.missionTitle} (Step 2/3: Battle)`,
+        eyebrow: `Mission ${m.missionNumber} · ${m.missionTitle} (Step 2/3: Battle)`,
         title: `⚔ Defeat ${m.alienTitle} for ${m.scrapName}`,
         sub: m.scrapBattleText,
       }
     }
     return {
-      eyebrow: `Mission ${m.missionNumber}/6 · ${m.missionTitle} (Step 1/3: Encounter)`,
+      eyebrow: `Mission ${m.missionNumber} · ${m.missionTitle} (Step 1/3: Encounter)`,
       title: `✦ Locate & Scan ${m.alienTitle}`,
       sub: `${m.behavior} · Then defeat it for ${m.scrapName}.`,
     }
@@ -847,7 +864,7 @@ export default function MarsGame({ reducedMotion = false }) {
             }}
             onClick={() => setShowMissionGuide(true)}
           >
-            ❖ Directives ({missionState.completedMissions.length}/6) [M]
+            ❖ Missions ({missionState.completedMissions.length}/{MISSIONS.length}) [M]
           </button>
           <button
             type="button"
@@ -1065,7 +1082,7 @@ export default function MarsGame({ reducedMotion = false }) {
         </div>
       )}
 
-      {/* Interactive Prompts for Nearby Alien, Mission Crate, Historical Report, or Supply */}
+      {/* Interactive Prompts for Nearby Alien, Mission Crate / Perseverance Rover, Historical Report, or Supply */}
       <div className="mars-prompt-stack">
         {activeNearbyCreature && (
           <button
@@ -1073,7 +1090,11 @@ export default function MarsGame({ reducedMotion = false }) {
             className="mars-scan-prompt"
             onClick={() => enterCreatureScan(activeNearbyCreature)}
           >
-            {activeNearbyCreature.scanned
+            {!activeNearbyCreature.isMission
+              ? activeNearbyCreature.scanned
+                ? `⚔ Battle Roaming ${activeNearbyCreature.name} [E]`
+                : `✦ Scan Roaming ${activeNearbyCreature.name} [E]`
+              : activeNearbyCreature.scanned
               ? `⚔ Battle ${activeNearbyCreature.alienTitle} for ${activeNearbyCreature.scrapName} [E]`
               : `✦ Scan ${activeNearbyCreature.alienTitle} (Mission ${activeNearbyCreature.missionNumber}) [E]`}
           </button>
@@ -1085,7 +1106,9 @@ export default function MarsGame({ reducedMotion = false }) {
             onClick={() => handleRepairMissionCrate(activeNearbyCrate)}
           >
             {activeNearbyCrate.scrapObtained
-              ? `🔧 Use ${activeNearbyCrate.scrapName} → ${activeNearbyCrate.taskActionLabel} [F]`
+              ? activeNearbyCrate.missionNumber === 2
+                ? `🔧 Fix Perseverance Rover Wires (Use ${activeNearbyCrate.scrapName}) [F]`
+                : `🔧 Use ${activeNearbyCrate.scrapName} → ${activeNearbyCrate.taskActionLabel} [F]`
               : `🔒 ${activeNearbyCrate.targetObject} — Defeat ${activeNearbyCrate.alienNumber} for ${activeNearbyCrate.scrapName}`}
           </button>
         )}
@@ -1119,27 +1142,42 @@ export default function MarsGame({ reducedMotion = false }) {
         onSelectRecord={rec => setActiveRecord(rec)}
       />
 
-      {/* In-Game Serial Mission Log Modal */}
+      {/* In-Game Serial Mission Log Modal (Missions 1, 2 & 5) */}
       <MissionGuideModal
         isOpen={showMissionGuide}
         onClose={() => setShowMissionGuide(false)}
-        activeCharacterId={activeMissionCreature?.characterId ?? 6}
+        activeCharacterId={activeMissionCreature?.characterId ?? 5}
         onProgressChange={() => syncFromStorage()}
       />
 
-      {/* Final Mission 6 Completion Modal: S.U.N.A. IV Quantum Relay Transmission Broadcasted */}
+      {/* Mission 2 Perseverance Rover Wire Repair Modal */}
+      <WireRepairModal
+        isOpen={showWireRepair}
+        onClose={() => setShowWireRepair(false)}
+        onComplete={() => {
+          setShowWireRepair(false)
+          const mission2Creature =
+            liveCreatures.current.find(c => c.missionNumber === 2) ||
+            hudState.creatures.find(c => c.missionNumber === 2)
+          if (mission2Creature) {
+            executeMissionCompletion(mission2Creature)
+          }
+        }}
+      />
+
+      {/* Final Mission 5 Completion Modal */}
       {allMissionsComplete && !dismissedFinaleModal && !storyBanner && (
-        <div className="mars-rover-modal" role="dialog" aria-label="Final transmission broadcasted">
-          <strong>★ S.U.N.A. IV FINAL TRANSMISSION COMPLETE</strong>
+        <div className="mars-rover-modal" role="dialog" aria-label="All missions completed">
+          <strong>★ ALL 3 SURFACE MISSIONS COMPLETE (1, 2 &amp; 5)</strong>
           <p>
-            You repaired the S.U.N.A. IV Quantum Relay Crate with Prime Harmonic Scrap and broadcasted all survival data and recovered historical reports back to Earth. Your secret mission is complete!
+            You repaired the Supply Crate to restore your HUD, reconnected the Perseverance Rover’s wires to bring its Power Core online, and used the Data-Decryptor Chip to recover the classified historical reports!
           </p>
           <div className="mars-rover-actions">
             <button type="button" onClick={() => setDismissedFinaleModal(true)}>
               Keep Exploring Mars
             </button>
             <button type="button" onClick={() => setShowMissionGuide(true)}>
-              Review Mission Log (6/6)
+              Review Mission Log ({MISSIONS.length}/{MISSIONS.length})
             </button>
             <button type="button" onClick={handleNewExpedition}>
               Restart Story Expedition

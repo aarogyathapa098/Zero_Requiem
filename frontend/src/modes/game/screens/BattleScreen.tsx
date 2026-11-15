@@ -7,7 +7,9 @@ import { getCharacterById } from "../data/characters.js";
 import {
   completeMissionTask,
   getActiveSerialMission,
+  isMissionUnlocked,
   loadMissionProgress,
+  MISSIONS,
   recordAlienDefeated,
 } from "../data/missions.js";
 import { loadSavedProgress } from "../../map/game/marsModel.js";
@@ -227,15 +229,14 @@ export default function BattleScreen() {
   const [showMissionGuide, setShowMissionGuide] = useState(false);
 
   const activeSerial = getActiveSerialMission(missionProgress);
-  const maxUnlockedId = activeSerial ? activeSerial.id : 6;
+  const maxUnlockedId = activeSerial ? activeSerial.id : 5;
   const rawEnemyId =
     paramCharId !== null
       ? Number(paramCharId)
       : scannedCharIds[scannedCharIds.length - 1] ?? null;
 
   const isRequestedUnlocked =
-    rawEnemyId !== null &&
-    (rawEnemyId === 1 || missionProgress.completedMissions.includes(rawEnemyId - 1));
+    rawEnemyId !== null && isMissionUnlocked(rawEnemyId, missionProgress);
   const resolvedEnemyId = isRequestedUnlocked ? rawEnemyId : maxUnlockedId;
 
   const isTargetScanned =
@@ -455,9 +456,13 @@ export default function BattleScreen() {
     setPhase("idle");
   };
 
-  // Handle using the dropped Scrap to repair the Mission Crate / Core / Filter
+  // Handle using the dropped Scrap to repair the Mission Crate (or return to Rover for Mission 2 wire repair)
   const handleExecuteMissionRepair = () => {
     audio.playRepair();
+    if (enemyCreature.id === 2) {
+      navigate("/map");
+      return;
+    }
     const updated = completeMissionTask(enemyCreature.id);
     setMissionProgress(updated);
     setDialogue(
@@ -485,10 +490,14 @@ export default function BattleScreen() {
         {/* Mission Banner Pill (Top Left) */}
         <div className="battle-mission-banner">
           <span className="battle-mission-tag">
-            MISSION {enemyCreature.missionNumber}: {enemyCreature.missionTitle.toUpperCase()}
+            {enemyCreature.isMission
+              ? `MISSION ${enemyCreature.missionNumber}: ${enemyCreature.missionTitle.toUpperCase()}`
+              : `WILD ENCOUNTER: ${enemyCreature.name.toUpperCase()}`}
           </span>
           <span className="battle-mission-sub">
-            Scrap Target: {enemyCreature.scrapName} → Fix {enemyCreature.targetObject}
+            {enemyCreature.isMission
+              ? `Scrap Target: ${enemyCreature.scrapName} → Fix ${enemyCreature.targetObject}`
+              : enemyCreature.behavior}
           </span>
         </div>
 
@@ -499,7 +508,7 @@ export default function BattleScreen() {
             className="top-bar-btn is-mission-btn"
             onClick={() => setShowMissionGuide(true)}
           >
-            📋 MISSIONS ({missionProgress.completedMissions.length}/6)
+            ❖ MISSIONS ({missionProgress.completedMissions.length}/{MISSIONS.length})
           </button>
           <button
             type="button"
@@ -713,7 +722,9 @@ export default function BattleScreen() {
         {phase === "fainted_enemy" && (
           <div className="battle-end-overlay">
             <h2 className="battle-end-title">
-              ★ MISSION {enemyCreature.missionNumber}: {enemyCreature.missionTitle.toUpperCase()} ★
+              {enemyCreature.isMission
+                ? `★ MISSION ${enemyCreature.missionNumber}: ${enemyCreature.missionTitle.toUpperCase()} ★`
+                : `★ WILD ${enemyCreature.name.toUpperCase()} DEFEATED ★`}
             </h2>
 
             <div className="battle-mission-reward-card">
@@ -729,25 +740,30 @@ export default function BattleScreen() {
                 <small>{enemyCreature.scrapOrigin}</small>
               </div>
 
-              <div className="battle-reward-row">
-                <span className="battle-reward-label">MISSION TASK:</span>
-                <p className="battle-task-text">{enemyCreature.taskDescription}</p>
-              </div>
+              {enemyCreature.isMission && (
+                <>
+                  <div className="battle-reward-row">
+                    <span className="battle-reward-label">MISSION TASK:</span>
+                    <p className="battle-task-text">{enemyCreature.taskDescription}</p>
+                  </div>
 
-              {!isCurrentMissionRepaired ? (
-                <button
-                  type="button"
-                  className="battle-repair-cta"
-                  onClick={handleExecuteMissionRepair}
-                >
-                  🔧 USE {enemyCreature.scrapName.toUpperCase()} →{" "}
-                  {enemyCreature.taskActionLabel.toUpperCase()}
-                </button>
-              ) : (
-                <div className="battle-repaired-badge" role="status">
-                  ✓ {enemyCreature.targetObject.toUpperCase()} REPAIRED!
-                  <span>{enemyCreature.systemEffectLabel}</span>
-                </div>
+                  {!isCurrentMissionRepaired ? (
+                    <button
+                      type="button"
+                      className="battle-repair-cta"
+                      onClick={handleExecuteMissionRepair}
+                    >
+                      {enemyCreature.id === 2
+                        ? "🔧 RETURN TO PERSEVERANCE ROVER ON MAP & FIX WIRES →"
+                        : `🔧 USE ${enemyCreature.scrapName.toUpperCase()} → ${enemyCreature.taskActionLabel.toUpperCase()}`}
+                    </button>
+                  ) : (
+                    <div className="battle-repaired-badge" role="status">
+                      ✓ {enemyCreature.targetObject.toUpperCase()} REPAIRED!
+                      <span>{enemyCreature.systemEffectLabel}</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -757,10 +773,12 @@ export default function BattleScreen() {
                 className="battle-end-btn"
                 onClick={() => navigate("/map")}
               >
-                {isCurrentMissionRepaired
-                  ? enemyCreature.missionNumber < 6
-                    ? `▶ PROCEED TO MISSION ${enemyCreature.missionNumber + 1} ON MAP →`
-                    : "★ RETURN TO MARS SURFACE (ALL 6 COMPLETE)"
+                {!enemyCreature.isMission
+                  ? "← RETURN TO MARS MAP"
+                  : isCurrentMissionRepaired
+                  ? enemyCreature.missionNumber < 5
+                    ? `▶ PROCEED TO NEXT MISSION ON MAP →`
+                    : "★ RETURN TO MARS SURFACE (ALL MISSIONS COMPLETE)"
                   : `← RETURN TO MAP & FIX ${enemyCreature.targetObject.toUpperCase()}`}
               </button>
               <button
@@ -768,7 +786,7 @@ export default function BattleScreen() {
                 className="battle-end-btn"
                 onClick={() => setShowMissionGuide(true)}
               >
-                ❖ DIRECTIVES ({missionProgress.completedMissions.length}/6)
+                ❖ DIRECTIVES ({missionProgress.completedMissions.length}/{MISSIONS.length})
               </button>
             </div>
           </div>

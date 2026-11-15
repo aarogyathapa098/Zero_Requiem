@@ -3,14 +3,14 @@ import { getGeologyAt } from '../data/sim3464.js'
 import { PERSEVERANCE_PATH } from './marsTraverse.js'
 import { ROVER_RECORDS, SCRAP_PICKUPS, SUPPLY_PICKUPS } from '../data/roverRecords.js'
 import { CHARACTERS, getCharacterById } from '../../game/data/characters.js'
-import { loadMissionProgress } from '../../game/data/missions.js'
+import { isMissionUnlocked, loadMissionProgress } from '../../game/data/missions.js'
 
 export const MAP_SIZE = { width: 2400, height: 1800 }
 export const CAMP = { x: 2220, y: 1050 }
 export const START = { x: 2100, y: 1050 }
 export const SAVE_KEY = 'orbital-mars-expedition-v3'
 export const SCAN_RANGES = [0, 100, 155, 215]
-export const PERSEVERANCE_ROVER = PERSEVERANCE_PATH.at(-1) || { x: 337, y: 1132 }
+export const PERSEVERANCE_ROVER = { x: 1475, y: 785 }
 
 function buildScrapTrailSites() {
   return CHARACTERS.map((character, slot) => ({
@@ -106,6 +106,19 @@ export const SPECIES = [
   { id: 'glimmer', name: 'Glimmer', kind: 'Crystal rover', color: '#a5d8c9', dark: '#568e8a', hp: 44, attack: 10, reward: 14, weakness: 'Scan the brightest crystal before pulsing.', description: 'An imagined crystal creature that flickers across the lakebed. Real Mars has no confirmed creatures like this.' },
 ]
 
+function createRandomRoamingAnchors() {
+  const anchors = {}
+  for (const character of CHARACTERS) {
+    if (!character.isMission) {
+      anchors[character.slot] = {
+        x: Math.round(320 + Math.random() * 1650),
+        y: Math.round(320 + Math.random() * 1150),
+      }
+    }
+  }
+  return anchors
+}
+
 export function newProgress() {
   return {
     mapVersion: 2,
@@ -122,6 +135,7 @@ export function newProgress() {
     creatureOrder: createRandomizedCreatureOrder(),
     scannedSlots: [],
     scannedAnchors: {},
+    roamingAnchors: createRandomRoamingAnchors(),
     trailElapsed: 0,
     roverReached: false,
     vitals: defaultVitals(),
@@ -150,11 +164,18 @@ function interpolatePathPoint(floatIndex) {
 export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
   const scannedSlots = Array.isArray(progress?.scannedSlots) ? progress.scannedSlots : []
   const missionProgress = loadMissionProgress()
+  if (progress && !progress.roamingAnchors) {
+    progress.roamingAnchors = createRandomRoamingAnchors()
+  }
+  const roamingAnchors = progress?.roamingAnchors || {}
 
   return SCRAP_TRAIL_SITES.map(site => {
     const { slot } = site
     const character = getCharacterById(slot + 1)
-    const unlocked = slot === 0 || missionProgress.completedMissions.includes(slot)
+    const isMission = Boolean(character.isMission)
+    const unlocked = isMission
+      ? isMissionUnlocked(character.id, missionProgress)
+      : true
     const scanned =
       scannedSlots.includes(slot) ||
       missionProgress.defeatedAliens.includes(character.id) ||
@@ -164,22 +185,34 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
       missionProgress.obtainedScraps.includes(character.id) ||
       missionProgress.completedMissions.includes(character.id)
     const scrapObtained =
-      missionProgress.obtainedScraps.includes(character.id) ||
-      missionProgress.completedMissions.includes(character.id)
-    const taskCompleted = missionProgress.completedMissions.includes(character.id)
+      isMission &&
+      (missionProgress.obtainedScraps.includes(character.id) ||
+        missionProgress.completedMissions.includes(character.id))
+    const taskCompleted =
+      isMission && missionProgress.completedMissions.includes(character.id)
 
     let stage = 'locked'
-    if (taskCompleted) stage = 'completed'
-    else if (scrapObtained) stage = 'repair'
-    else if (scanned && unlocked) stage = 'battle'
-    else if (unlocked) stage = 'scan'
+    if (!isMission) {
+      stage = defeated ? 'completed' : scanned ? 'battle' : 'scan'
+    } else if (taskCompleted) {
+      stage = 'completed'
+    } else if (scrapObtained) {
+      stage = 'repair'
+    } else if (scanned && unlocked) {
+      stage = 'battle'
+    } else if (unlocked) {
+      stage = 'scan'
+    }
 
-    const anchorX = Math.max(60, Math.min(MAP_SIZE.width - 60, site.x))
-    const anchorY = Math.max(60, Math.min(MAP_SIZE.height - 60, site.y))
+    const randomAnchor = !isMission ? roamingAnchors[slot] : null
+    const baseAnchorX = randomAnchor?.x ?? site.x
+    const baseAnchorY = randomAnchor?.y ?? site.y
+    const anchorX = Math.max(80, Math.min(MAP_SIZE.width - 80, baseAnchorX))
+    const anchorY = Math.max(80, Math.min(MAP_SIZE.height - 80, baseAnchorY))
 
     const phase = time * 0.65 + slot * 2.05
     const modeWave = Math.sin(phase * 0.55)
-    const feasting = !defeated && (reducedMotion || modeWave > -0.2)
+    const feasting = isMission && !defeated && (reducedMotion || modeWave > -0.2)
 
     let offsetX = 0
     let offsetY = 0
@@ -189,6 +222,14 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
       offsetX = slot % 2 === 0 ? 11 : -11
       offsetY = 3
       facing = offsetX > 0 ? -1 : 1
+    } else if (!isMission) {
+      // Non-mission aliens roam widely around their random map coordinates
+      const roamRadiusX = 95
+      const roamRadiusY = 72
+      offsetX = Math.cos(phase * 0.55 + slot) * roamRadiusX + Math.sin(phase * 1.15) * 28
+      offsetY = Math.sin(phase * 0.72 + slot) * roamRadiusY + Math.cos(phase * 1.05) * 22
+      const vx = -Math.sin(phase * 0.55 + slot) * 0.55 * roamRadiusX + Math.cos(phase * 1.15) * 1.15 * 28
+      if (Math.abs(vx) > 0.8) facing = vx >= 0 ? 1 : -1
     } else if (feasting) {
       const side = slot % 2 === 0 ? 1 : -1
       offsetX = side * (11 + Math.sin(phase * 2.2) * 2.5)
@@ -209,6 +250,8 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
     return {
       slot,
       characterId: character.id,
+      isMission,
+      isRoaming: Boolean(character.isRoaming),
       missionNumber: character.missionNumber,
       missionTitle: character.missionTitle,
       alienNumber: character.alienNumber,
@@ -240,8 +283,8 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
       anchorY,
       crateX: site.crateX,
       crateY: site.crateY,
-      originX: site.x,
-      originY: site.y,
+      originX: anchorX,
+      originY: anchorY,
       distToRover: Math.hypot(x - PERSEVERANCE_ROVER.x, y - PERSEVERANCE_ROVER.y),
     }
   })
@@ -249,7 +292,7 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
 
 export function getActiveTargetCreature(creatures) {
   if (!Array.isArray(creatures)) return null
-  return creatures.find(creature => !creature.taskCompleted) || null
+  return creatures.find(creature => creature.isMission && !creature.taskCompleted) || null
 }
 
 export function movePlayer(player, direction, seconds, wind = null, suitPower = 100) {

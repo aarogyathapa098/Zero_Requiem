@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CHARACTERS } from "../data/characters.js";
+import { MISSION_CHARACTERS } from "../data/characters.js";
 import {
   completeMissionTask,
   getActiveSerialMission,
+  isMissionUnlocked,
   loadMissionProgress,
+  MISSIONS,
 } from "../data/missions.js";
 import {
   distance,
   loadSavedProgress,
   markCreatureScanned,
 } from "../../map/game/marsModel.js";
+import WireRepairModal from "./WireRepairModal.jsx";
 
 const DIRECTIVE_CSS = `
   .ares-overlay {
@@ -674,12 +677,13 @@ export default function MissionGuideModal({
   const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
   const [mapProgress, setMapProgress] = useState(() => loadSavedProgress());
   const [transitionBanner, setTransitionBanner] = useState(null);
+  const [showWireRepair, setShowWireRepair] = useState(false);
 
   const activeSerial = getActiveSerialMission(missionProgress);
   const defaultSelectedId = activeSerial?.id ?? Number(activeCharacterId || 1);
   const [selectedId, setSelectedId] = useState(defaultSelectedId);
 
-  // Sync selected mission to current active serial mission (1 → 2 → 3 → 4 → 5 → 6)
+  // Sync selected mission to current active serial mission (1 → 2 → 5)
   useEffect(() => {
     if (!isOpen) return;
     const freshMission = loadMissionProgress();
@@ -689,7 +693,7 @@ export default function MissionGuideModal({
     const currentSerial = getActiveSerialMission(freshMission);
     if (currentSerial) {
       setSelectedId(currentSerial.id);
-    } else if (activeCharacterId) {
+    } else if (activeCharacterId && MISSION_CHARACTERS.some((c) => c.id === Number(activeCharacterId))) {
       setSelectedId(Number(activeCharacterId));
     }
   }, [isOpen, activeCharacterId]);
@@ -702,10 +706,9 @@ export default function MissionGuideModal({
 
   const playerPos = mapProgress.player || { x: 2100, y: 1050 };
 
-  // Strict serial timeline check: Mission N is ONLY unlocked when Mission N-1 is completed
+  // Strict serial timeline check for Missions 1 -> 2 -> 5
   const getMissionStateForChar = (char) => {
-    const isUnlocked =
-      char.id === 1 || missionProgress.completedMissions.includes(char.id - 1);
+    const isUnlocked = isMissionUnlocked(char.id, missionProgress);
     const isScanned =
       isUnlocked &&
       (scannedCharIds.includes(char.id) ||
@@ -747,11 +750,31 @@ export default function MissionGuideModal({
 
   // Ensure selectedChar can never point to a locked future mission
   const rawSelectedChar =
-    CHARACTERS.find((c) => c.id === Number(selectedId)) || CHARACTERS[0];
+    MISSION_CHARACTERS.find((c) => c.id === Number(selectedId)) || MISSION_CHARACTERS[0];
   const selectedChar = getMissionStateForChar(rawSelectedChar).isUnlocked
     ? rawSelectedChar
-    : CHARACTERS.find((c) => c.id === (activeSerial?.id ?? 1)) || CHARACTERS[0];
+    : MISSION_CHARACTERS.find((c) => c.id === (activeSerial?.id ?? 1)) || MISSION_CHARACTERS[0];
   const selectedState = getMissionStateForChar(selectedChar);
+
+  const finalizeMissionRepair = (missionId) => {
+    const updated = completeMissionTask(missionId);
+    const freshMap = loadSavedProgress();
+    setMissionProgress(updated);
+    setMapProgress(freshMap);
+    onProgressChange?.(updated);
+
+    const nextSerial = getActiveSerialMission(updated);
+    if (nextSerial) {
+      setTransitionBanner(
+        `✓ Mission ${selectedChar.missionNumber} Complete! Unlocked Mission ${nextSerial.missionNumber}: ${nextSerial.title}`
+      );
+      setSelectedId(nextSerial.id);
+    } else {
+      setTransitionBanner(
+        `★ All ${MISSIONS.length} Missions Complete! Historical Reports Recovered.`
+      );
+    }
+  };
 
   const handlePrimaryAction = () => {
     if (!selectedState.isUnlocked) return;
@@ -783,23 +806,12 @@ export default function MissionGuideModal({
     }
 
     if (selectedState.stage === "repair") {
-      const updated = completeMissionTask(selectedChar.id);
-      const freshMap = loadSavedProgress();
-      setMissionProgress(updated);
-      setMapProgress(freshMap);
-      onProgressChange?.(updated);
-
-      const nextSerial = getActiveSerialMission(updated);
-      if (nextSerial) {
-        setTransitionBanner(
-          `✓ Mission ${selectedChar.missionNumber} Complete! Unlocked Mission ${nextSerial.missionNumber}: ${nextSerial.title}`
-        );
-        setSelectedId(nextSerial.id);
-      } else {
-        setTransitionBanner(
-          `★ All 6 S.U.N.A. IV Directives Complete! Final Transmission Broadcasted.`
-        );
+      if (selectedChar.id === 2) {
+        // Mission 2 requires connecting the 4 Perseverance Rover wires
+        setShowWireRepair(true);
+        return;
       }
+      finalizeMissionRepair(selectedChar.id);
       return;
     }
 
@@ -840,7 +852,7 @@ export default function MissionGuideModal({
 
   const getPrimaryCtaLabel = () => {
     if (!selectedState.isUnlocked) {
-      return `Locked (Complete Mission ${selectedChar.id - 1})`;
+      return `Locked (Complete Mission ${selectedChar.prevMissionId} First)`;
     }
     if (selectedState.stage === "scan") {
       return `Scan ${selectedChar.alienTitle} →`;
@@ -849,7 +861,9 @@ export default function MissionGuideModal({
       return `Battle ${selectedChar.alienTitle} →`;
     }
     if (selectedState.stage === "repair") {
-      return `Fix ${selectedChar.targetObject} →`;
+      return selectedChar.id === 2
+        ? `Fix Perseverance Rover Wires →`
+        : `Fix ${selectedChar.targetObject} →`;
     }
     const nextSerial = getActiveSerialMission(missionProgress);
     return nextSerial
@@ -883,14 +897,14 @@ export default function MissionGuideModal({
       <style>{DIRECTIVE_CSS}</style>
 
       <div className="ares-window">
-        {/* ── Left Vertical Timeline Step Sidebar (1 → 6) ──────────────── */}
+        {/* ── Left Vertical Timeline Step Sidebar (Missions 1 → 2 → 5) ─── */}
         <aside className="ares-sidebar" aria-label="Mission timeline progress">
           <div className="ares-pennant" aria-hidden="true">
             !
           </div>
 
           <div className="ares-nav-tabs">
-            {CHARACTERS.map((char) => {
+            {MISSION_CHARACTERS.map((char) => {
               const st = getMissionStateForChar(char);
               const isCurrent = activeSerial?.id === char.id;
               return (
@@ -902,7 +916,7 @@ export default function MissionGuideModal({
                   title={
                     st.isUnlocked
                       ? `Mission ${char.missionNumber}: ${char.missionTitle}`
-                      : `Mission ${char.missionNumber} Locked (Complete Mission ${char.id - 1} first)`
+                      : `Mission ${char.missionNumber} Locked (Complete Mission ${char.prevMissionId} first)`
                   }
                 >
                   {st.isCompleted ? "✓" : char.missionNumber}
@@ -912,7 +926,7 @@ export default function MissionGuideModal({
           </div>
 
           <div className="ares-sidebar-bottom" title="Completed Missions">
-            {missionProgress.completedMissions.length}/6
+            {missionProgress.completedMissions.length}/{MISSIONS.length}
           </div>
         </aside>
 
@@ -920,11 +934,11 @@ export default function MissionGuideModal({
         <div className="ares-main">
           <header className="ares-topbar">
             <span className="ares-status-label">
-              <span>❖ Mission Timeline (1 → 6)</span>
+              <span>❖ Mission Timeline (1 → 2 → 5)</span>
               <small style={{ color: "#8ceeff", fontSize: 12 }}>
                 {activeSerial
-                  ? `Active: Mission ${activeSerial.missionNumber}/6`
-                  : "All 6 Missions Completed"}
+                  ? `Active: Mission ${activeSerial.missionNumber} (${missionProgress.completedMissions.length}/${MISSIONS.length} Done)`
+                  : "All 3 Missions Completed"}
               </small>
             </span>
             <button
@@ -941,15 +955,15 @@ export default function MissionGuideModal({
           </header>
 
           <div className="ares-columns">
-            {/* ── Left Column: Sequential Timeline 1 → 2 → 3 → 4 → 5 → 6 ─ */}
+            {/* ── Left Column: Sequential Timeline 1 → 2 → 5 ──────────── */}
             <div className="ares-left-col">
               <div className="ares-directive-header-box">
                 <strong>◈ Serial Expedition Timeline</strong>
-                <span>Complete each mission in order (1 → 6) to unlock the next</span>
+                <span>Complete Mission 1 → Mission 2 → Mission 5 in order</span>
               </div>
 
               <div className="ares-timeline-list">
-                {CHARACTERS.map((char) => {
+                {MISSION_CHARACTERS.map((char) => {
                   const st = getMissionStateForChar(char);
                   const isSelected = selectedChar.id === char.id;
 
@@ -975,7 +989,7 @@ export default function MissionGuideModal({
                           {st.isCompleted
                             ? `✓ ${char.targetObject} Fixed`
                             : !st.isUnlocked
-                            ? `🔒 Locked — Finish Mission ${char.id - 1} first`
+                            ? `🔒 Locked — Finish Mission ${char.prevMissionId} first`
                             : `${st.distMeters}m · ${
                                 st.stage === "repair"
                                   ? `Fix ${char.targetObject}`
@@ -1149,6 +1163,15 @@ export default function MissionGuideModal({
           </div>
         </div>
       </div>
+
+      <WireRepairModal
+        isOpen={showWireRepair}
+        onClose={() => setShowWireRepair(false)}
+        onComplete={() => {
+          setShowWireRepair(false);
+          finalizeMissionRepair(2);
+        }}
+      />
     </div>
   );
 }

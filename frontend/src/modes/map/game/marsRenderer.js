@@ -408,10 +408,13 @@ function drawSupplyPickup(ctx, item, isNearby, time, reducedMotion) {
 /**
  * Draws the damaged Perseverance Rover at the end of the scrap trail.
  */
-function drawPerseveranceRover(ctx, x, y, allScanned, time, reducedMotion) {
+function drawPerseveranceRover(ctx, x, y, allScanned, time, reducedMotion, mission2Creature = null, isNearbyRover = false) {
   ctx.save()
   ctx.translate(Math.round(x), Math.round(y))
   ctx.scale(0.78, 0.78)
+
+  const readyToFixWires = Boolean(mission2Creature?.scrapObtained && !mission2Creature?.taskCompleted)
+  const wiresRepaired = Boolean(mission2Creature?.taskCompleted || allScanned)
 
   ctx.fillStyle = '#2d1c1478'
   ctx.beginPath()
@@ -421,10 +424,14 @@ function drawPerseveranceRover(ctx, x, y, allScanned, time, reducedMotion) {
   drawRoverScrapPile(ctx, 34, 15, 7, false, true, true, time, reducedMotion)
   drawRoverScrapPile(ctx, -32, 17, 9, false, true, true, time, reducedMotion)
 
-  if (allScanned && !reducedMotion) {
+  if ((readyToFixWires || wiresRepaired || isNearbyRover) && !reducedMotion) {
     const pulse = (time % 1.8) / 1.8
-    ctx.strokeStyle = `rgba(140, 240, 210, ${(1 - pulse) * 0.7})`
-    ctx.lineWidth = 2
+    ctx.strokeStyle = wiresRepaired
+      ? `rgba(56, 239, 125, ${(1 - pulse) * 0.75})`
+      : readyToFixWires
+      ? `rgba(255, 214, 102, ${(1 - pulse) * 0.85})`
+      : `rgba(140, 240, 210, ${(1 - pulse) * 0.7})`
+    ctx.lineWidth = 2.2
     ctx.beginPath()
     ctx.ellipse(0, 6, 38 + pulse * 22, 18 + pulse * 10, 0, 0, Math.PI * 2)
     ctx.stroke()
@@ -509,22 +516,32 @@ function drawPerseveranceRover(ctx, x, y, allScanned, time, reducedMotion) {
   ctx.fill()
   ctx.stroke()
 
-  ctx.fillStyle = allScanned ? '#6ff7d8' : '#ff7b54'
+  ctx.fillStyle = wiresRepaired ? '#6ff7d8' : readyToFixWires ? '#ffd166' : '#ff7b54'
   ctx.beginPath()
   ctx.arc(-16, -37, 2.1, 0, Math.PI * 2)
   ctx.fill()
 
-  const roverLabel = allScanned ? '★ PERSEVERANCE ROVER' : 'PERSEVERANCE ROVER'
+  const roverLabel = wiresRepaired
+    ? '✓ PERSEVERANCE ROVER ONLINE'
+    : readyToFixWires
+    ? isNearbyRover
+      ? '🔧 [F / CLICK] FIX PERSEVERANCE ROVER WIRES'
+      : '🔧 FIX PERSEVERANCE ROVER WIRES'
+    : 'PERSEVERANCE ROVER'
   ctx.font = '700 9.5px Manrope, sans-serif'
   const labelWidth = ctx.measureText(roverLabel).width
   ctx.fillStyle = '#1b2724e6'
-  ctx.strokeStyle = allScanned ? '#8ef0d4aa' : '#ead9b866'
+  ctx.strokeStyle = wiresRepaired
+    ? '#38ef7dcc'
+    : readyToFixWires
+    ? '#ffd166dd'
+    : '#ead9b866'
   ctx.lineWidth = 1.2
   ctx.beginPath()
   ctx.roundRect(-labelWidth / 2 - 9, 22, labelWidth + 18, 19, 5)
   ctx.fill()
   ctx.stroke()
-  ctx.fillStyle = allScanned ? '#c9fff0' : '#f4e7cf'
+  ctx.fillStyle = wiresRepaired ? '#c9fff0' : readyToFixWires ? '#fff3b8' : '#f4e7cf'
   ctx.textAlign = 'center'
   ctx.fillText(roverLabel, 0, 35)
   ctx.textAlign = 'left'
@@ -533,12 +550,14 @@ function drawPerseveranceRover(ctx, x, y, allScanned, time, reducedMotion) {
 }
 
 /**
- * Draws the Mission Crate / Repair Target for Missions 1..6 on the pixel map.
+ * Draws the Mission Crate / Repair Target for Missions 1 & 5 on the pixel map.
+ * (Mission 2 repairs the Perseverance Rover directly; roaming aliens have no crate.)
  */
 function drawMissionCrate(ctx, creature, isNearbyCrate, time, reducedMotion) {
   const {
     crateX: x,
     crateY: y,
+    isMission,
     missionNumber,
     targetObject,
     scrapName,
@@ -547,7 +566,7 @@ function drawMissionCrate(ctx, creature, isNearbyCrate, time, reducedMotion) {
     unlocked,
   } = creature
 
-  if (!unlocked) return
+  if (!unlocked || !isMission || missionNumber === 2) return
 
   const readyToRepair = scrapObtained && !taskCompleted
   const pulse = reducedMotion ? 0.5 : (Math.sin(time * 4.2 + missionNumber) + 1) * 0.5
@@ -750,18 +769,34 @@ function drawTrailCreature(ctx, creature, isTarget, isNearby, time, reducedMotio
   let label
   let textColor
   let borderColor
-  if (scanned) {
+  if (!creature.isMission) {
+    if (scanned) {
+      label = isNearby
+        ? `[E / CLICK] BATTLE ${name.toUpperCase()}`
+        : `ROAMING · ${name.toUpperCase()}`
+      textColor = '#c8f0e8'
+      borderColor = '#6bd6c499'
+    } else if (isNearby) {
+      label = `[E / CLICK] SCAN ${name.toUpperCase()}`
+      textColor = '#d4f7ff'
+      borderColor = '#7eeeffaa'
+    } else {
+      label = `ROAMING ALIEN · ${name.toUpperCase()}`
+      textColor = '#d9cfb8'
+      borderColor = '#b8aa8e55'
+    }
+  } else if (scanned) {
     label = isNearby
       ? `[E / CLICK] BATTLE ${name.toUpperCase()} (${scrapName.toUpperCase()})`
-      : `⚔ ALIEN ${missionNumber}: ${name}`
+      : `⚔ MISSION ${missionNumber}: ${name}`
     textColor = '#ffe2a8'
     borderColor = '#ff9e5eaa'
   } else if (isNearby) {
-    label = `[E / CLICK] SCAN ALIEN ${missionNumber}`
+    label = `[E / CLICK] SCAN ALIEN (MISSION ${missionNumber})`
     textColor = '#ffe7a8'
     borderColor = '#ffd275cc'
   } else {
-    label = `MISSION ${missionNumber} · ALIEN ${missionNumber} (SCAN)`
+    label = `MISSION ${missionNumber} · ${name.toUpperCase()} (SCAN)`
     textColor = '#f5d9b0'
     borderColor = '#eab97855'
   }
@@ -950,9 +985,9 @@ export function renderMap(
   ctx.textAlign = 'left'
   ctx.restore()
 
-  // Draw shed scrap metal & Mission Crates along the trail
+  // Draw shed scrap metal & Mission Crates along the trail (only for actual missions)
   for (const creature of creatureList) {
-    if (!creature.unlocked) continue
+    if (!creature.unlocked || !creature.isMission) continue
     const scrapItem = SCRAP_PICKUPS.find(item => item.slot === creature.slot)
     const scrapCollected = scrapItem ? collectedScrap.includes(scrapItem.id) : false
     drawRoverScrapPile(
@@ -975,8 +1010,18 @@ export function renderMap(
     )
   }
 
-  // Draw Perseverance Rover at the end of the trail
-  drawPerseveranceRover(ctx, PERSEVERANCE_ROVER.x, PERSEVERANCE_ROVER.y, allScanned, time, reducedMotion)
+  // Draw Perseverance Rover (Mission 2 Repair Target)
+  const mission2Creature = creatureList.find(c => c.missionNumber === 2) || null
+  drawPerseveranceRover(
+    ctx,
+    PERSEVERANCE_ROVER.x,
+    PERSEVERANCE_ROVER.y,
+    allScanned,
+    time,
+    reducedMotion,
+    mission2Creature,
+    nearbyCrateSlot === 1
+  )
 
   // Depth-sort creatures and astronaut by y coordinate (sprite scale = 2)
   const actors = [

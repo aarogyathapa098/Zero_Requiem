@@ -10,7 +10,9 @@
 .jezero-map-source small{font-size:9px;color:#abb4b8}
 .jezero-map-frame{border:1px solid #ffffff2b;background:#0c1115}
 .jezero-map-viewport{height:min(68svh,730px);min-height:450px;position:relative;overflow:hidden;touch-action:pan-y;cursor:grab;background:#151a1d}
-.jezero-map-viewport:active{cursor:grabbing}
+.jezero-map-page .jezero-map-viewport,.jezero-map-page .jezero-map-viewport *{cursor:grab!important;user-select:none;-webkit-user-select:none}
+.jezero-map-page .jezero-map-viewport button,.jezero-map-page .jezero-map-viewport button *,.jezero-map-page .jezero-map-viewport a,.jezero-map-page .jezero-map-viewport a *{cursor:var(--zr-cursor-pointer)!important}
+.jezero-map-page .jezero-map-viewport.is-panning,.jezero-map-page .jezero-map-viewport.is-panning *{cursor:grabbing!important}
 .jezero-map-viewport>img{position:absolute;left:0;top:0;width:4456px;height:5067px;max-width:none;transform-origin:top left;user-select:none;pointer-events:none;image-rendering:auto}
 .jezero-map-viewport button{cursor:pointer}
 .jezero-map-compass,.jezero-map-scale,.jezero-map-coordinate,.jezero-map-controls{position:absolute;z-index:2;background:#0a0e12d9;border:1px solid #ffffff29}

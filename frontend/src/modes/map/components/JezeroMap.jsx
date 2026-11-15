@@ -44,6 +44,7 @@ export default function JezeroMap({ onBack }) {
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [view, setView] = useState(INITIAL)
   const [cursor, setCursor] = useState(null)
+  const [isPanning, setIsPanning] = useState(false)
   const [selected, setSelected] = useState(null)
   const [imagery, setImagery] = useState('imagery')
   const [geologyOpacity, setGeologyOpacity] = useState(0.7)
@@ -134,7 +135,10 @@ export default function JezeroMap({ onBack }) {
   }
   const onPointerDown = event => {
     if (event.button !== 0 || event.target.closest('button,a,.jezero-feature')) return
+    event.preventDefault()
+    viewportRef.current.focus({ preventScroll: true })
     dragRef.current = { id: event.pointerId, point: mapPoint(event), view }
+    setIsPanning(true)
     viewportRef.current.setPointerCapture(event.pointerId)
   }
   const onPointerMove = event => {
@@ -145,7 +149,11 @@ export default function JezeroMap({ onBack }) {
     }
     setCursor({ lon: view.lon + (point.x - size.width / 2) / ppd(view.zoom), lat: view.lat - (point.y - size.height / 2) / ppd(view.zoom) })
   }
-  const onPointerUp = event => { if (dragRef.current?.id === event.pointerId) dragRef.current = null }
+  const onPointerUp = event => {
+    if (dragRef.current?.id !== event.pointerId) return
+    dragRef.current = null
+    setIsPanning(false)
+  }
   const onKeyDown = event => {
     const move = { ArrowLeft: [-100, 0], ArrowRight: [100, 0], ArrowUp: [0, 100], ArrowDown: [0, -100] }[event.key]
     if (move) { event.preventDefault(); setView(current => ({ ...current, lon: current.lon + move[0] / ppd(current.zoom), lat: current.lat + move[1] / ppd(current.zoom) })) }
@@ -216,7 +224,7 @@ export default function JezeroMap({ onBack }) {
       <button className="jezero-detail-button" onClick={() => { setImagery('imagery'); setView({ lon: 77.38, lat: 18.48, zoom: 15.4 }); setSelected(LANDMARKS[5]) }}>Go to 1 m detail <Plus size={16} /></button>
     </div>
     <div className="jezero-map-frame">
-      <div ref={viewportRef} className="jezero-map-viewport" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onPointerLeave={() => setCursor(null)} onKeyDown={onKeyDown} tabIndex={0} role="region" aria-label="Jezero regional map. Drag or use arrow keys to pan; use the map controls to zoom. Scroll to move through the page.">
+      <div ref={viewportRef} className={'jezero-map-viewport' + (isPanning ? ' is-panning' : '')} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onLostPointerCapture={onPointerUp} onPointerLeave={() => setCursor(null)} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} tabIndex={0} role="region" aria-label="Jezero regional map. Grab and drag to pan, or use arrow keys. Use the map controls to zoom. Scroll to move through the page.">
         {tileLayers[0]?.tiles.map(tile => <img className="jezero-tile base" key={tile.key} src={tile.url} alt="" draggable="false" style={{ left: tile.x, top: tile.y, width: tile.size, height: tile.size }} onError={event => { event.currentTarget.style.display = 'none'; setTileError(true) }} />)}
         <img className="jezero-relief-image" src={metadata.image} alt="" draggable="false" style={{ left: reliefTopLeft.x, top: reliefTopLeft.y, width: reliefBottomRight.x - reliefTopLeft.x, height: reliefBottomRight.y - reliefTopLeft.y }} />
         {tileLayers.slice(1).map(layer => layer.tiles.map(tile => <img className={`jezero-tile ${layer.name}`} key={tile.key} src={tile.url} alt="" draggable="false" style={{ left: tile.x, top: tile.y, width: tile.size, height: tile.size }} onError={event => { event.currentTarget.style.display = 'none' }} />))}

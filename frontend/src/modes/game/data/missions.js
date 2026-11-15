@@ -253,12 +253,27 @@ export function getMissionBySlot(slot) {
   );
 }
 
+/**
+ * @typedef {{
+ *   version: number;
+ *   defeatedAliens: number[];
+ *   obtainedScraps: number[];
+ *   completedMissions: number[];
+ *   hudUnlocked: boolean;
+ *   roverPowerOnline: boolean;
+ *   reportsDecrypted: boolean;
+ * }} MissionProgress
+ */
+
+/**
+ * @returns {MissionProgress}
+ */
 export function defaultMissionProgress() {
   return {
     version: 2,
-    defeatedAliens: [],
-    obtainedScraps: [],
-    completedMissions: [],
+    defeatedAliens: /** @type {number[]} */ ([]),
+    obtainedScraps: /** @type {number[]} */ ([]),
+    completedMissions: /** @type {number[]} */ ([]),
     hudUnlocked: false,
     roverPowerOnline: false,
     reportsDecrypted: false,

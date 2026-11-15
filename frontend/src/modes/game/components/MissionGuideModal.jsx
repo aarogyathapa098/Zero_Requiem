@@ -666,12 +666,21 @@ function SegmentedBar({ percent }) {
   );
 }
 
+/**
+ * @param {{
+ *   isOpen?: boolean;
+ *   onClose?: () => void;
+ *   activeCharacterId?: number | null;
+ *   standalone?: boolean;
+ *   onProgressChange?: (next: any) => void;
+ * }} props
+ */
 export default function MissionGuideModal({
   isOpen = true,
-  onClose,
+  onClose = undefined,
   activeCharacterId = null,
   standalone = false,
-  onProgressChange,
+  onProgressChange = undefined,
 }) {
   const navigate = useNavigate();
   const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());

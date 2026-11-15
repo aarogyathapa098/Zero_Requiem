@@ -771,7 +771,7 @@ export default function BattleScreen() {
                 {!enemyCreature.isMission
                   ? "← RETURN TO MARS MAP"
                   : isCurrentMissionRepaired
-                    ? enemyCreature.missionNumber < 5
+                    ? (enemyCreature.missionNumber ?? 0) < 5
                       ? `▶ PROCEED TO NEXT MISSION ON MAP →`
                       : "★ RETURN TO MARS SURFACE (ALL MISSIONS COMPLETE)"
                     : `← RETURN TO MAP & FIX ${enemyCreature.targetObject.toUpperCase()}`}

@@ -4,6 +4,7 @@ import * as THREE from "three";
 import logoUrl from "../../../assets/zero-requiem-logo.png";
 import marsPhotoUrl from "../../../assets/mars-surface.jpg";
 import { resetSavedProgress } from "../../map/game/marsModel.js";
+import { resetMissionProgress } from "../data/missions.js";
 import "./MenuScreen.css";
 
 interface OverlayContent {
@@ -13,7 +14,7 @@ interface OverlayContent {
 
 const ABOUT_OVERLAY: OverlayContent = {
   title: "About",
-  body: "Project: Zero Requiem is set in the S.U.N.A IV system. Replace this text with your story and credits.",
+  body: "Project: Zero Requiem is set in the S.U.N.A. IV system. Survive the Martian surface, repair your failing life-support systems, uncover why previous crews went dark, and broadcast the final transmission back to Earth.",
 };
 
 export default function MenuScreen() {
@@ -29,6 +30,7 @@ export default function MenuScreen() {
   const handlePlay = () => {
     if (leaving) return;
     resetSavedProgress();
+    resetMissionProgress();
     setLeaving(true);
     leaveTimerRef.current = window.setTimeout(() => navigate("/cutscene"), 550);
   };

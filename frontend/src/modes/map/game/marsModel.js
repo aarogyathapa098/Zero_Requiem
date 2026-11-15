@@ -3,61 +3,32 @@ import { getGeologyAt } from '../data/sim3464.js'
 import { PERSEVERANCE_PATH } from './marsTraverse.js'
 import { ROVER_RECORDS, SCRAP_PICKUPS, SUPPLY_PICKUPS } from '../data/roverRecords.js'
 import { CHARACTERS, getCharacterById } from '../../game/data/characters.js'
+import { isMissionUnlocked, loadMissionProgress } from '../../game/data/missions.js'
 
 export const MAP_SIZE = { width: 2400, height: 1800 }
 export const CAMP = { x: 2220, y: 1050 }
 export const START = { x: 2100, y: 1050 }
 export const SAVE_KEY = 'orbital-mars-expedition-v3'
 export const SCAN_RANGES = [0, 100, 155, 215]
-export const PERSEVERANCE_ROVER = PERSEVERANCE_PATH.at(-1) || { x: 337, y: 1132 }
-
-// Compute 6 spaced scrap-metal feeding sites along Perseverance's traverse,
-// each gap bringing the player progressively closer to Perseverance Rover.
-const TRAIL_FRACTIONS = [0.24, 0.41, 0.51, 0.61, 0.70, 0.84]
+export const PERSEVERANCE_ROVER = { x: 1475, y: 785 }
 
 function buildScrapTrailSites() {
-  const cumulative = [0]
-  for (let i = 1; i < PERSEVERANCE_PATH.length; i++) {
-    const prev = PERSEVERANCE_PATH[i - 1]
-    const curr = PERSEVERANCE_PATH[i]
-    cumulative.push(cumulative[i - 1] + Math.hypot(curr.x - prev.x, curr.y - prev.y))
-  }
-  const totalLength = cumulative.at(-1) || 1
-  const indices = TRAIL_FRACTIONS.map(fraction => {
-    const target = totalLength * fraction
-    const found = cumulative.findIndex(dist => dist >= target)
-    return found === -1 ? PERSEVERANCE_PATH.length - 2 : found
-  })
-
-  return indices.map((pathIndex, slot) => {
-    const nextLimit = slot < indices.length - 1
-      ? indices[slot + 1]
-      : PERSEVERANCE_PATH.length - 1
-    // Allow each creature to gradually creep up to ~42% of the gap closer toward Perseverance over time
-    const maxAdvanceIndex = Math.max(
-      pathIndex,
-      pathIndex + Math.floor((nextLimit - pathIndex) * 0.42)
-    )
-    const point = PERSEVERANCE_PATH[pathIndex]
-    return {
-      slot,
-      pathIndex,
-      maxAdvanceIndex,
-      x: point.x,
-      y: point.y,
-    }
-  })
+  return CHARACTERS.map((character, slot) => ({
+    slot,
+    pathIndex: slot,
+    maxAdvanceIndex: slot,
+    x: character.alienPos?.x ?? 1800 - slot * 240,
+    y: character.alienPos?.y ?? 950,
+    crateX: character.cratePos?.x ?? (character.alienPos?.x ?? 1800) - 45,
+    crateY: character.cratePos?.y ?? (character.alienPos?.y ?? 950) - 20,
+  }))
 }
 
 export const SCRAP_TRAIL_SITES = buildScrapTrailSites()
 
-export function createRandomizedCreatureOrder(random = Math.random) {
-  const ids = CHARACTERS.map(character => character.id)
-  for (let i = ids.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1))
-    ;[ids[i], ids[j]] = [ids[j], ids[i]]
-  }
-  return ids
+export function createRandomizedCreatureOrder() {
+  // Serial mission order: Mission 1 -> Mission 2 -> Mission 3 -> Mission 4 -> Mission 5 -> Mission 6
+  return CHARACTERS.map(character => character.id)
 }
 
 function defaultVitals() {
@@ -135,6 +106,19 @@ export const SPECIES = [
   { id: 'glimmer', name: 'Glimmer', kind: 'Crystal rover', color: '#a5d8c9', dark: '#568e8a', hp: 44, attack: 10, reward: 14, weakness: 'Scan the brightest crystal before pulsing.', description: 'An imagined crystal creature that flickers across the lakebed. Real Mars has no confirmed creatures like this.' },
 ]
 
+function createRandomRoamingAnchors() {
+  const anchors = {}
+  for (const character of CHARACTERS) {
+    if (!character.isMission) {
+      anchors[character.slot] = {
+        x: Math.round(320 + Math.random() * 1650),
+        y: Math.round(320 + Math.random() * 1150),
+      }
+    }
+  }
+  return anchors
+}
+
 export function newProgress() {
   return {
     mapVersion: 2,
@@ -151,6 +135,7 @@ export function newProgress() {
     creatureOrder: createRandomizedCreatureOrder(),
     scannedSlots: [],
     scannedAnchors: {},
+    roamingAnchors: createRandomRoamingAnchors(),
     trailElapsed: 0,
     roverReached: false,
     vitals: defaultVitals(),
@@ -177,51 +162,82 @@ function interpolatePathPoint(floatIndex) {
 }
 
 export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
-  const order = Array.isArray(progress?.creatureOrder) && progress.creatureOrder.length === CHARACTERS.length
-    ? progress.creatureOrder
-    : CHARACTERS.map(c => c.id)
   const scannedSlots = Array.isArray(progress?.scannedSlots) ? progress.scannedSlots : []
-  const scannedAnchors = progress?.scannedAnchors || {}
-  const elapsed = Math.max(0, Number(progress?.trailElapsed) || 0)
+  const missionProgress = loadMissionProgress()
+  if (progress && !progress.roamingAnchors) {
+    progress.roamingAnchors = createRandomRoamingAnchors()
+  }
+  const roamingAnchors = progress?.roamingAnchors || {}
 
   return SCRAP_TRAIL_SITES.map(site => {
     const { slot } = site
-    const characterId = order[slot]
-    const character = getCharacterById(characterId)
-    const scanned = scannedSlots.includes(slot)
+    const character = getCharacterById(slot + 1)
+    const isMission = Boolean(character.isMission)
+    const unlocked = isMission
+      ? isMissionUnlocked(character.id, missionProgress)
+      : true
+    const scanned =
+      scannedSlots.includes(slot) ||
+      missionProgress.defeatedAliens.includes(character.id) ||
+      missionProgress.completedMissions.includes(character.id)
+    const defeated =
+      missionProgress.defeatedAliens.includes(character.id) ||
+      missionProgress.obtainedScraps.includes(character.id) ||
+      missionProgress.completedMissions.includes(character.id)
+    const scrapObtained =
+      isMission &&
+      (missionProgress.obtainedScraps.includes(character.id) ||
+        missionProgress.completedMissions.includes(character.id))
+    const taskCompleted =
+      isMission && missionProgress.completedMissions.includes(character.id)
 
-    let anchor
-    if (scanned && scannedAnchors[slot]) {
-      anchor = scannedAnchors[slot]
-    } else {
-      const maxSteps = site.maxAdvanceIndex - site.pathIndex
-      const stepAdvance = Math.min(maxSteps, elapsed * 0.42)
-      anchor = interpolatePathPoint(site.pathIndex + stepAdvance)
+    let stage = 'locked'
+    if (!isMission) {
+      stage = defeated ? 'completed' : scanned ? 'battle' : 'scan'
+    } else if (taskCompleted) {
+      stage = 'completed'
+    } else if (scrapObtained) {
+      stage = 'repair'
+    } else if (scanned && unlocked) {
+      stage = 'battle'
+    } else if (unlocked) {
+      stage = 'scan'
     }
 
-    const anchorX = Math.max(60, Math.min(MAP_SIZE.width - 60, anchor.x))
-    const anchorY = Math.max(60, Math.min(MAP_SIZE.height - 60, anchor.y))
+    const randomAnchor = !isMission ? roamingAnchors[slot] : null
+    const baseAnchorX = randomAnchor?.x ?? site.x
+    const baseAnchorY = randomAnchor?.y ?? site.y
+    const anchorX = Math.max(80, Math.min(MAP_SIZE.width - 80, baseAnchorX))
+    const anchorY = Math.max(80, Math.min(MAP_SIZE.height - 80, baseAnchorY))
 
     const phase = time * 0.65 + slot * 2.05
     const modeWave = Math.sin(phase * 0.55)
-    const feasting = !scanned && (reducedMotion || modeWave > -0.2)
+    const feasting = isMission && !defeated && (reducedMotion || modeWave > -0.2)
 
     let offsetX = 0
     let offsetY = 0
     let facing = slot % 2 === 0 ? -1 : 1
 
-    if (reducedMotion) {
+    if (reducedMotion || defeated) {
       offsetX = slot % 2 === 0 ? 11 : -11
       offsetY = 3
       facing = offsetX > 0 ? -1 : 1
+    } else if (!isMission) {
+      // Non-mission aliens roam widely around their random map coordinates
+      const roamRadiusX = 95
+      const roamRadiusY = 72
+      offsetX = Math.cos(phase * 0.55 + slot) * roamRadiusX + Math.sin(phase * 1.15) * 28
+      offsetY = Math.sin(phase * 0.72 + slot) * roamRadiusY + Math.cos(phase * 1.05) * 22
+      const vx = -Math.sin(phase * 0.55 + slot) * 0.55 * roamRadiusX + Math.cos(phase * 1.15) * 1.15 * 28
+      if (Math.abs(vx) > 0.8) facing = vx >= 0 ? 1 : -1
     } else if (feasting) {
       const side = slot % 2 === 0 ? 1 : -1
       offsetX = side * (11 + Math.sin(phase * 2.2) * 2.5)
       offsetY = 3 + Math.cos(phase * 1.9) * 2
       facing = offsetX > 0 ? -1 : 1
     } else {
-      const roamRadiusX = scanned ? 15 : 24
-      const roamRadiusY = scanned ? 11 : 16
+      const roamRadiusX = scanned ? 12 : 18
+      const roamRadiusY = scanned ? 9 : 13
       offsetX = Math.cos(phase * 0.9) * roamRadiusX + Math.sin(phase * 1.7) * 4
       offsetY = Math.sin(phase * 1.25) * roamRadiusY
       const vx = -Math.sin(phase * 0.9) * 0.9 * roamRadiusX + Math.cos(phase * 1.7) * 1.7 * 4
@@ -234,10 +250,30 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
     return {
       slot,
       characterId: character.id,
+      isMission,
+      isRoaming: Boolean(character.isRoaming),
+      missionNumber: character.missionNumber,
+      missionTitle: character.missionTitle,
+      alienNumber: character.alienNumber,
+      alienTitle: character.alienTitle,
+      behavior: character.behavior,
+      scrapName: character.scrapName,
+      scrapBattleText: character.scrapBattleText,
+      targetObject: character.targetObject,
+      taskActionLabel: character.taskActionLabel,
+      taskDescription: character.taskDescription,
+      systemEffectLabel: character.systemEffectLabel,
+      arrivalBriefing: character.arrivalBriefing,
+      completionStory: character.completionStory,
       name: character.name,
       characterSrc: character.character,
       silhouetteSrc: character.silhouette,
+      unlocked,
       scanned,
+      defeated,
+      scrapObtained,
+      taskCompleted,
+      stage,
       feasting,
       roaming: !feasting,
       facing,
@@ -245,8 +281,10 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
       y,
       anchorX,
       anchorY,
-      originX: site.x,
-      originY: site.y,
+      crateX: site.crateX,
+      crateY: site.crateY,
+      originX: anchorX,
+      originY: anchorY,
       distToRover: Math.hypot(x - PERSEVERANCE_ROVER.x, y - PERSEVERANCE_ROVER.y),
     }
   })
@@ -254,7 +292,7 @@ export function computeMapCreatures(progress, time = 0, reducedMotion = false) {
 
 export function getActiveTargetCreature(creatures) {
   if (!Array.isArray(creatures)) return null
-  return creatures.find(creature => !creature.scanned) || null
+  return creatures.find(creature => creature.isMission && !creature.taskCompleted) || null
 }
 
 export function movePlayer(player, direction, seconds, wind = null, suitPower = 100) {
@@ -363,15 +401,8 @@ export function restoreProgress(value) {
   clean.encountered = [...new Set(Array.isArray(value.encountered) ? value.encountered.filter(id => SPECIES.some(species => species.id === id)) : [])]
   clean.destinationId = SITES.some(site => site.id === value.destinationId) ? value.destinationId : null
 
-  const validIds = new Set(CHARACTERS.map(c => c.id))
-  if (
-    Array.isArray(value.creatureOrder) &&
-    value.creatureOrder.length === CHARACTERS.length &&
-    new Set(value.creatureOrder).size === CHARACTERS.length &&
-    value.creatureOrder.every(id => validIds.has(id))
-  ) {
-    clean.creatureOrder = [...value.creatureOrder]
-  }
+  // Enforce serial mission order [1, 2, 3, 4, 5, 6]
+  clean.creatureOrder = CHARACTERS.map(c => c.id)
   if (Array.isArray(value.scannedSlots)) {
     clean.scannedSlots = [...new Set(value.scannedSlots.filter(slot => Number.isInteger(slot) && slot >= 0 && slot < SCRAP_TRAIL_SITES.length))]
   }
@@ -461,7 +492,7 @@ export function markCreatureScanned(slot, characterId) {
   const current = loadSavedProgress()
   let targetSlot = Number.isInteger(Number(slot)) ? Number(slot) : -1
   if ((targetSlot < 0 || targetSlot >= SCRAP_TRAIL_SITES.length) && characterId != null) {
-    targetSlot = current.creatureOrder.indexOf(Number(characterId))
+    targetSlot = Number(characterId) - 1
   }
   if (targetSlot < 0 || targetSlot >= SCRAP_TRAIL_SITES.length) return current
 
@@ -471,10 +502,6 @@ export function markCreatureScanned(slot, characterId) {
     ...current.scannedAnchors,
     ...(live ? { [targetSlot]: { x: live.anchorX, y: live.anchorY } } : {}),
   }
-  const scrapForSlot = SCRAP_PICKUPS.find(item => item.slot === targetSlot)
-  const collectedScrap = scrapForSlot && !current.collectedScrap.includes(scrapForSlot.id)
-    ? [...current.collectedScrap, scrapForSlot.id]
-    : current.collectedScrap
 
   const scannedSlots = current.scannedSlots.includes(targetSlot)
     ? current.scannedSlots
@@ -484,7 +511,6 @@ export function markCreatureScanned(slot, characterId) {
     ...current,
     scannedSlots,
     scannedAnchors,
-    collectedScrap,
     research: current.research + 15,
   }
   return saveSavedProgress(updated)

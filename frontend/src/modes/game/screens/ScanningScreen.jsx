@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CharacterDiscover from "./CharacterDiscover";
 import MissionGuideModal from "../components/MissionGuideModal";
 import { CHARACTERS } from "../data/characters";
-import { loadMissionProgress } from "../data/missions";
+import { getActiveSerialMission, loadMissionProgress } from "../data/missions";
 import { loadSavedProgress, markCreatureScanned } from "../../map/game/marsModel";
 
 const PILL_BUTTON_STYLE = {
@@ -35,18 +35,26 @@ export default function ScanningScreen({ initialIndex = 0 }) {
   const paramSlot = searchParams.get("slot") ?? location.state?.slot ?? null;
   const fromMap = Boolean(location.state?.fromMap || paramSlot !== null || paramCharId !== null);
 
+  const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
+
   const resolvedInitialIndex = (() => {
+    const activeSerial = getActiveSerialMission(missionProgress);
+    const maxAllowedId = activeSerial ? activeSerial.id : 6;
     if (paramCharId !== null) {
-      const foundIndex = CHARACTERS.findIndex((item) => item.id === Number(paramCharId));
+      const requestedId = Number(paramCharId);
+      const isUnlocked =
+        requestedId === 1 || missionProgress.completedMissions.includes(requestedId - 1);
+      const targetId = isUnlocked ? requestedId : maxAllowedId;
+      const foundIndex = CHARACTERS.findIndex((item) => item.id === targetId);
       if (foundIndex !== -1) return foundIndex;
     }
-    return initialIndex % CHARACTERS.length;
+    const activeIndex = CHARACTERS.findIndex((item) => item.id === maxAllowedId);
+    return activeIndex !== -1 ? activeIndex : initialIndex % CHARACTERS.length;
   })();
 
   const [index] = useState(resolvedInitialIndex);
   const [discovered, setDiscovered] = useState(false);
   const [scannedCount, setScannedCount] = useState(() => loadSavedProgress().scannedSlots.length);
-  const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
   const [showMissionGuide, setShowMissionGuide] = useState(false);
 
   const current = CHARACTERS[index];
@@ -105,7 +113,7 @@ export default function ScanningScreen({ initialIndex = 0 }) {
         onDiscover={handleDiscover}
       />
 
-      {/* Top-Right Mission Guide Button */}
+      {/* Top-Right Compact Mission Timeline Button */}
       <button
         type="button"
         onClick={() => setShowMissionGuide(true)}
@@ -113,12 +121,13 @@ export default function ScanningScreen({ initialIndex = 0 }) {
           ...PILL_BUTTON_STYLE,
           left: "auto",
           right: 22,
-          borderColor: "rgba(111, 182, 255, 0.75)",
-          background: "rgba(14, 28, 48, 0.78)",
-          color: "#d4f7ff",
+          padding: "7px 14px",
+          borderColor: "rgba(67, 232, 216, 0.78)",
+          background: "rgba(18, 26, 38, 0.72)",
+          color: "#e6fffb",
         }}
       >
-        📋 Mission {current.missionNumber}: {current.missionTitle} ({missionProgress.completedMissions.length}/6)
+        ❖ Missions ({missionProgress.completedMissions.length}/6)
       </button>
 
       {fromMap ? (

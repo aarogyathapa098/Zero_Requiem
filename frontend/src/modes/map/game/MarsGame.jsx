@@ -173,10 +173,14 @@ export default function MarsGame({ reducedMotion = false }) {
     setMissionState(updatedMission)
 
     showToast(`🔧 Repaired ${creature.targetObject} with ${creature.scrapName}! (${creature.systemEffectLabel})`)
+    const nextMissionNum = creature.missionNumber < 6 ? creature.missionNumber + 1 : null
     setStoryBanner({
       title: `★ Mission ${creature.missionNumber} Complete: ${creature.missionTitle}`,
       body: creature.completionStory,
       effect: creature.systemEffectLabel,
+      nextLabel: nextMissionNum
+        ? `▶ Next Directive Unlocked: Mission ${nextMissionNum}/6`
+        : '★ Final Directive Accomplished — S.U.N.A. IV Uplink Active',
     })
 
     // Mission 5 bonus: open the decrypted crew chronicle modal so player can read it immediately
@@ -184,6 +188,12 @@ export default function MarsGame({ reducedMotion = false }) {
       setActiveRecord(ROVER_RECORDS[0])
     }
   }, [persistCurrentState, showToast])
+
+  useEffect(() => {
+    if (!storyBanner) return undefined
+    const timer = setTimeout(() => setStoryBanner(null), 6500)
+    return () => clearTimeout(timer)
+  }, [storyBanner])
 
   const collectSupplyItem = useCallback(supply => {
     if (!supply || game.current.collectedSupplies.includes(supply.id)) return
@@ -288,6 +298,9 @@ export default function MarsGame({ reducedMotion = false }) {
           event.preventDefault()
           handleRepairMissionCrate(nearbyCrateRef.current)
         }
+      } else if (key === 'm' && !activeRecord) {
+        event.preventDefault()
+        setShowMissionGuide(prev => !prev)
       } else if (key === 'f' && !activeRecord && !showMissionGuide) {
         if (nearbyCrateRef.current) {
           event.preventDefault()
@@ -828,13 +841,13 @@ export default function MarsGame({ reducedMotion = false }) {
             type="button"
             className="mars-menu-btn"
             style={{
-              borderColor: 'rgba(111, 182, 255, 0.75)',
-              color: '#d4f7ff',
-              background: 'rgba(14, 28, 48, 0.85)',
+              borderColor: 'rgba(67, 232, 216, 0.85)',
+              color: '#f2ead7',
+              background: 'rgba(28, 35, 50, 0.92)',
             }}
             onClick={() => setShowMissionGuide(true)}
           >
-            📋 Mission Log ({missionState.completedMissions.length}/6)
+            ❖ Directives ({missionState.completedMissions.length}/6) [M]
           </button>
           <button
             type="button"
@@ -848,96 +861,175 @@ export default function MarsGame({ reducedMotion = false }) {
           </button>
         </div>
 
-        <div className={`mars-tracker-card${allMissionsComplete ? ' is-complete' : ''}`} role="status">
+        <div
+          className={`mars-tracker-card${allMissionsComplete ? ' is-complete' : ''}`}
+          role="button"
+          tabIndex={0}
+          title="Click to open Primary Directives [M]"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setShowMissionGuide(true)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setShowMissionGuide(true)
+            }
+          }}
+        >
           <span className="mars-tracker-eyebrow">{serialStep.eyebrow}</span>
           <strong className="mars-tracker-count">{serialStep.title}</strong>
           <span className="mars-tracker-sub">{serialStep.sub}</span>
         </div>
       </div>
 
-      {/* Story Progression Banner when a Mission Crate is Repaired */}
+      {/* Swift Non-Blocking Directive Transition Banner when a Mission is Completed */}
       {storyBanner && (
         <div
-          className="mars-rover-modal"
-          role="dialog"
-          aria-label="Mission milestone completed"
-          style={{ maxWidth: 520, zIndex: 45 }}
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            top: 18,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 45,
+            width: 'min(560px, 92vw)',
+            padding: '14px 18px',
+            borderRadius: 10,
+            border: '1.5px solid rgba(67, 232, 216, 0.85)',
+            background: 'linear-gradient(180deg, rgba(28, 35, 50, 0.96), rgba(18, 22, 32, 0.96))',
+            boxShadow: '0 14px 36px rgba(0, 0, 0, 0.65), 0 0 22px rgba(67, 232, 216, 0.25)',
+            color: '#f4efe6',
+            backdropFilter: 'blur(8px)',
+          }}
         >
-          <strong>{storyBanner.title}</strong>
-          <p style={{ marginTop: 8 }}>{storyBanner.body}</p>
-          <p style={{ fontSize: 12, color: '#69f0ae', marginTop: 4 }}>
-            ✓ System Effect: {storyBanner.effect}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <strong style={{ color: '#f3d37a', fontSize: 15, letterSpacing: '0.03em' }}>
+              {storyBanner.title}
+            </strong>
+            {storyBanner.nextLabel && (
+              <span
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  color: '#132829',
+                  background: 'linear-gradient(90deg, #43e8d8, #f2e266)',
+                  padding: '3px 9px',
+                  borderRadius: 999,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {storyBanner.nextLabel}
+              </span>
+            )}
+          </div>
+          <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: 1.45, color: '#e4ddd0' }}>
+            {storyBanner.body}
           </p>
-          <div className="mars-rover-actions">
-            <button type="button" onClick={() => setStoryBanner(null)}>
-              Continue Mission →
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStoryBanner(null)
-                setShowMissionGuide(true)
-              }}
-            >
-              View Mission Log
-            </button>
+          <div
+            style={{
+              marginTop: 9,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ fontSize: 12, color: '#43e8d8', fontWeight: 600 }}>
+              ✓ {storyBanner.effect}
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStoryBanner(null)
+                  setShowMissionGuide(true)
+                }}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 999,
+                  border: '1px solid rgba(67, 232, 216, 0.75)',
+                  background: 'rgba(67, 232, 216, 0.16)',
+                  color: '#d9fffb',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Open Directives [M]
+              </button>
+              <button
+                type="button"
+                onClick={() => setStoryBanner(null)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#dfd7c8',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Mission 1 Gate: Life-Support HUD & Holographic Terminal are locked until Supply Crate is fixed! */}
-      {missionState.hudUnlocked ? (
-        <>
-          <HoloPhoneHUD
-            vitals={vitalsState}
-            creatures={hudState.creatures}
-            collectedScrap={hudState.collectedScrap}
-            collectedRecords={hudState.collectedRecords}
-            collectedSupplies={hudState.collectedSupplies}
-            inventoryCounts={hudState.inventoryCounts}
-            player={hudState.player}
-            trailElapsed={hudState.trailElapsed}
-            onConsumeSupply={handleConsumeSupply}
-            onOpenRecord={record => openRoverRecord(record)}
-          />
+      {/* Hologram Handle & Terminal: Always visible from the start of the game */}
+      <HoloPhoneHUD
+        vitals={vitalsState}
+        creatures={hudState.creatures}
+        collectedScrap={hudState.collectedScrap}
+        collectedRecords={hudState.collectedRecords}
+        collectedSupplies={hudState.collectedSupplies}
+        inventoryCounts={hudState.inventoryCounts}
+        player={hudState.player}
+        trailElapsed={hudState.trailElapsed}
+        onConsumeSupply={handleConsumeSupply}
+        onOpenRecord={record => openRoverRecord(record)}
+      />
 
-          <div className="mars-vitals-hud" aria-label="Explorer Vitals">
-            <VitalsHUD
-              main={{
-                label: 'O₂',
-                value: vitalsState.oxygen,
-                max: vitalsState.maxOxygen,
-                color: o2Color,
-                warnBelow: 0.35,
-              }}
-              satellites={[
-                {
-                  value: vitalsState.hunger,
-                  max: vitalsState.maxHunger,
-                  color: '#f0922e',
-                  icon: <Icons.Apple />,
-                  warnBelow: 0.25,
-                },
-                {
-                  value: vitalsState.health,
-                  max: vitalsState.maxHealth,
-                  color: '#e0403a',
-                  icon: <Icons.Heart />,
-                  warnBelow: 0.3,
-                },
-                {
-                  value: vitalsState.water,
-                  max: vitalsState.maxWater,
-                  color: '#3cc0ee',
-                  icon: <Icons.Drop />,
-                  warnBelow: 0.25,
-                },
-              ]}
-              mainSize={122}
-              satSize={56}
-            />
-          </div>
-        </>
+      {/* Mission 1 Gate: Bottom-left Life-Support Vitals HUD unlocks once Supply Crate is fixed */}
+      {missionState.hudUnlocked ? (
+        <div className="mars-vitals-hud" aria-label="Explorer Vitals">
+          <VitalsHUD
+            main={{
+              label: 'O₂',
+              value: vitalsState.oxygen,
+              max: vitalsState.maxOxygen,
+              color: o2Color,
+              warnBelow: 0.35,
+            }}
+            satellites={[
+              {
+                value: vitalsState.hunger,
+                max: vitalsState.maxHunger,
+                color: '#f0922e',
+                icon: <Icons.Apple />,
+                warnBelow: 0.25,
+              },
+              {
+                value: vitalsState.health,
+                max: vitalsState.maxHealth,
+                color: '#e0403a',
+                icon: <Icons.Heart />,
+                warnBelow: 0.3,
+              },
+              {
+                value: vitalsState.water,
+                max: vitalsState.maxWater,
+                color: '#3cc0ee',
+                icon: <Icons.Drop />,
+                warnBelow: 0.25,
+              },
+            ]}
+            mainSize={122}
+            satSize={56}
+          />
+        </div>
       ) : (
         <div
           role="status"

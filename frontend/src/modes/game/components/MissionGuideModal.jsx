@@ -1,336 +1,667 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CHARACTERS } from "../data/characters.js";
 import {
   completeMissionTask,
+  getActiveSerialMission,
   loadMissionProgress,
 } from "../data/missions.js";
-import { loadSavedProgress, markCreatureScanned } from "../../map/game/marsModel.js";
+import {
+  distance,
+  loadSavedProgress,
+  markCreatureScanned,
+} from "../../map/game/marsModel.js";
 
-const GUIDE_CSS = `
-  .zr-mission-backdrop {
+const DIRECTIVE_CSS = `
+  .ares-overlay {
     position: fixed;
     inset: 0;
     z-index: 120;
-    background: rgba(6, 8, 16, 0.86);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background: rgba(8, 10, 16, 0.24);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    display: grid;
+    place-items: center;
     padding: 18px;
-    font-family: 'Press Start 2P', 'Consolas', 'Courier New', monospace;
-    color: #fff3d6;
+    color: #f3ecdc;
+    font-family: "Georgia", "Times New Roman", "Manrope", serif;
     user-select: none;
   }
 
-  .zr-mission-window {
-    width: min(1040px, 96vw);
-    max-height: 90vh;
-    background: linear-gradient(180deg, #161b28 0%, #0e111a 100%);
-    border: 3px solid #6fb6ff;
-    border-radius: 8px;
+  /* Compact Floating Window (Does NOT use the whole screen, transparent glass) */
+  .ares-window {
+    position: relative;
+    width: min(900px, 88vw);
+    height: min(550px, 80vh);
+    border-radius: 14px;
+    border: 1.5px solid rgba(226, 210, 180, 0.42);
+    background: linear-gradient(
+      135deg,
+      rgba(34, 26, 28, 0.56) 0%,
+      rgba(22, 20, 28, 0.62) 100%
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     box-shadow:
-      0 0 40px rgba(0, 0, 0, 0.9),
-      0 0 24px rgba(111, 182, 255, 0.32),
-      inset 0 0 22px rgba(111, 182, 255, 0.12);
+      0 20px 50px rgba(0, 0, 0, 0.55),
+      inset 0 0 0 1px rgba(255, 245, 220, 0.1);
     display: flex;
-    flex-direction: column;
     overflow: hidden;
   }
 
-  .zr-mission-header {
-    padding: 16px 20px;
-    background: linear-gradient(90deg, #1d263b 0%, #281924 100%);
-    border-bottom: 2px solid rgba(111, 182, 255, 0.45);
+  /* ── Left Vertical Icon Sidebar ─────────────────────────────────────────── */
+  .ares-sidebar {
+    width: 60px;
+    background: rgba(18, 20, 28, 0.45);
+    border-right: 1px solid rgba(206, 185, 148, 0.24);
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
+    padding: 14px 0;
+    position: relative;
+    z-index: 3;
+    flex-shrink: 0;
   }
 
-  .zr-mission-title-wrap {
+  .ares-pennant {
+    width: 28px;
+    height: 36px;
+    background: linear-gradient(180deg, #dec79b 0%, #b89c6d 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+    display: grid;
+    place-items: center;
+    color: #2b2623;
+    font-weight: 900;
+    font-size: 15px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  }
+
+  .ares-nav-tabs {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
+    width: 100%;
+    align-items: center;
   }
 
-  .zr-mission-eyebrow {
-    font-size: 9px;
-    letter-spacing: 0.22em;
-    color: #7eeeff;
-    text-transform: uppercase;
+  .ares-step-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(214, 198, 168, 0.25);
+    background: rgba(20, 22, 30, 0.55);
+    color: #cfc5b2;
+    display: grid;
+    place-items: center;
+    font-family: "Manrope", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s ease;
   }
 
-  .zr-mission-heading {
-    margin: 0;
-    font-size: clamp(13px, 1.8vw, 17px);
-    color: #ffe6a8;
-    text-shadow: 0 0 12px rgba(255, 196, 100, 0.5);
+  .ares-step-dot.is-current {
+    background: #f3ede0;
+    border-color: #ffffff;
+    color: #1f2330;
+    box-shadow: 0 0 12px rgba(243, 237, 224, 0.65);
   }
 
-  .zr-mission-close {
-    font-family: inherit;
-    font-size: 10px;
-    padding: 9px 14px;
-    background: #9e2a2b;
-    color: #fff;
-    border: 2px solid #ff9b85;
-    border-radius: 4px;
+  .ares-step-dot.is-done {
+    background: rgba(28, 110, 78, 0.65);
+    border-color: #4ce09a;
+    color: #98ffd0;
+  }
+
+  .ares-step-dot.is-locked {
+    opacity: 0.38;
+  }
+
+  .ares-sidebar-bottom {
+    margin-top: auto;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(214, 198, 168, 0.3);
+    background: rgba(20, 24, 34, 0.55);
+    color: #e6dac4;
+    display: grid;
+    place-items: center;
+    font-family: "Manrope", sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+
+  /* ── Main Content Wrapper ───────────────────────────────────────────────── */
+  .ares-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  /* Top Bar ("In Progress" + Close circle button) */
+  .ares-topbar {
+    height: 50px;
+    padding: 0 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(226, 210, 180, 0.16);
+    flex-shrink: 0;
+  }
+
+  .ares-status-label {
+    font-size: 15px;
+    color: #e6d4b0;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ares-close-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(120, 108, 92, 0.6);
+    background: radial-gradient(circle, #f5efe2 0%, #dfd6c3 100%);
+    color: #2d2f3b;
+    font-size: 15px;
+    font-weight: 900;
+    display: grid;
+    place-items: center;
     cursor: pointer;
-    box-shadow: 0 3px 0 #4a0e10;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+    transition: transform 0.15s ease, filter 0.15s ease;
   }
 
-  .zr-mission-close:hover {
-    filter: brightness(1.15);
+  .ares-close-circle:hover {
+    transform: scale(1.06);
+    filter: brightness(1.05);
   }
 
-  .zr-mission-systems-bar {
+  /* ── Two-Column Body ────────────────────────────────────────────────────── */
+  .ares-columns {
+    flex: 1;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-    gap: 8px;
-    padding: 12px 20px;
-    background: rgba(10, 14, 24, 0.9);
-    border-bottom: 1px solid rgba(111, 182, 255, 0.28);
+    grid-template-columns: 310px 1px 1fr;
+    gap: 20px;
+    padding: 14px 22px 18px;
+    overflow: hidden;
   }
 
-  .zr-sys-pill {
-    padding: 7px 10px;
-    border-radius: 4px;
-    border: 1px solid rgba(140, 170, 210, 0.3);
-    background: rgba(24, 30, 46, 0.75);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-family: 'Consolas', 'Courier New', monospace;
-  }
-
-  .zr-sys-pill.is-online {
-    border-color: #38ef7d;
-    background: rgba(16, 56, 38, 0.55);
-    box-shadow: inset 0 0 10px rgba(56, 239, 125, 0.2);
-  }
-
-  .zr-sys-pill small {
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #9bb8d8;
-  }
-
-  .zr-sys-pill strong {
-    font-size: 11px;
-    color: #ffd68a;
-  }
-
-  .zr-sys-pill.is-online strong {
-    color: #69f0ae;
-  }
-
-  .zr-mission-list {
-    padding: 18px 20px;
-    overflow-y: auto;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
-    gap: 16px;
-  }
-
-  @media (max-width: 600px) {
-    .zr-mission-list {
+  @media (max-width: 820px) {
+    .ares-window {
+      width: 94vw;
+      height: 86vh;
+    }
+    .ares-columns {
       grid-template-columns: 1fr;
+      overflow-y: auto;
+    }
+    .ares-v-divider {
+      display: none;
     }
   }
 
-  .zr-mission-card {
-    background: linear-gradient(165deg, rgba(28, 36, 54, 0.94) 0%, rgba(16, 20, 32, 0.96) 100%);
-    border: 2px solid #3c4f70;
-    border-radius: 6px;
-    padding: 14px;
+  .ares-v-divider {
+    width: 1px;
+    background: linear-gradient(
+      180deg,
+      rgba(232, 218, 194, 0.08) 0%,
+      rgba(232, 218, 194, 0.45) 15%,
+      rgba(232, 218, 194, 0.45) 85%,
+      rgba(232, 218, 194, 0.08) 100%
+    );
+  }
+
+  /* ── Left Column: Sequential Timeline 1 → 2 → 3 → 4 → 5 → 6 ────────────── */
+  .ares-left-col {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    position: relative;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 4px;
   }
 
-  .zr-mission-card.is-active {
-    border-color: #ffd166;
-    box-shadow: 0 0 18px rgba(255, 209, 102, 0.25);
-  }
-
-  .zr-mission-card.is-completed {
-    border-color: #38ef7d;
-    box-shadow: 0 0 16px rgba(56, 239, 125, 0.2);
-  }
-
-  .zr-mission-card-top {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .zr-mission-avatar {
-    width: 68px;
-    height: 68px;
+  .ares-directive-header-box {
+    background: rgba(28, 32, 44, 0.52);
+    border: 1px solid rgba(226, 216, 195, 0.48);
     border-radius: 6px;
-    background: radial-gradient(circle, #2b3c56 0%, #121722 85%);
-    border: 2px solid #567099;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+
+  .ares-directive-header-box strong {
+    font-size: 13.5px;
+    color: #f6efe0;
+    font-weight: 600;
+  }
+
+  .ares-directive-header-box span {
+    font-size: 11.5px;
+    color: #dbb779;
+  }
+
+  /* Timeline Wrapper with vertical connector line */
+  .ares-timeline-list {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .ares-mission-item {
+    position: relative;
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(130, 140, 165, 0.32);
+    background: rgba(26, 30, 42, 0.48);
+    color: #ebe3d2;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.18s ease;
+    font-family: inherit;
+  }
+
+  .ares-mission-item:hover:not(:disabled) {
+    border-color: rgba(230, 215, 185, 0.65);
+    background: rgba(42, 48, 64, 0.65);
+  }
+
+  .ares-mission-item.is-selected {
+    background: linear-gradient(90deg, rgba(246, 241, 228, 0.94) 0%, rgba(234, 224, 204, 0.92) 100%);
+    border-color: #ffffff;
+    color: #222634;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+
+  .ares-mission-item.is-locked,
+  .ares-mission-item:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    background: rgba(16, 18, 26, 0.35);
+    border-color: rgba(100, 108, 125, 0.2);
+  }
+
+  .ares-timeline-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(226, 210, 180, 0.4);
     display: grid;
     place-items: center;
+    font-family: "Manrope", sans-serif;
+    font-size: 11.5px;
+    font-weight: 800;
     flex-shrink: 0;
-    padding: 4px;
   }
 
-  .zr-mission-avatar img {
-    width: 100%;
-    height: 100%;
+  .ares-mission-item.is-selected .ares-timeline-num {
+    background: #222634;
+    color: #f6f1e4;
+    border-color: #222634;
+  }
+
+  .ares-item-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ares-item-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ares-item-dist {
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    font-size: 11px;
+    color: #b5bccb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ares-mission-item.is-selected .ares-item-dist {
+    color: #555a68;
+    font-weight: 600;
+  }
+
+  /* Right badge inside mission item */
+  .ares-item-badge-active {
+    width: 22px;
+    height: 22px;
+    background: #1be7c6;
+    transform: rotate(45deg);
+    border-radius: 3px;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 0 10px rgba(27, 231, 198, 0.75);
+    flex-shrink: 0;
+  }
+
+  .ares-item-badge-active span {
+    transform: rotate(-45deg);
+    color: #132624;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .ares-item-badge-pin {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(54, 60, 76, 0.65);
+    border: 1px solid rgba(180, 190, 210, 0.3);
+    color: #b8c0d0;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .ares-item-badge-pin.is-done {
+    background: rgba(26, 92, 62, 0.75);
+    border-color: #4ce09a;
+    color: #7effc1;
+  }
+
+  /* ── Right Column: Detailed Directive View ──────────────────────────────── */
+  .ares-right-col {
+    display: flex;
+    flex-direction: column;
+    padding: 0 4px;
+    overflow-y: auto;
+  }
+
+  .ares-detail-title {
+    margin: 0;
+    font-size: clamp(19px, 2vw, 24px);
+    font-weight: 600;
+    color: #f9f3e6;
+  }
+
+  .ares-detail-loc {
+    margin-top: 3px;
+    font-size: 13px;
+    color: #deb97a;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .ares-ornament-line {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      rgba(220, 198, 164, 0.5) 0%,
+      rgba(220, 198, 164, 0.2) 90%,
+      transparent 100%
+    );
+    margin: 10px 0;
+    position: relative;
+  }
+
+  .ares-task-angle-header {
+    font-size: 14px;
+    color: #63f2dc;
+    margin-bottom: 5px;
+    font-weight: 600;
+  }
+
+  .ares-story-desc {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.48;
+    color: #ece4d2;
+  }
+
+  .ares-story-sub-list {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    font-size: 12px;
+    color: #dcd3c2;
+  }
+
+  .ares-story-sub-list strong {
+    color: #f4d290;
+  }
+
+  /* Mission Objectives Box with Segmented Bars */
+  .ares-objectives-heading {
+    font-size: 13.5px;
+    color: #f2e9d8;
+    margin: 2px 0 6px;
+  }
+
+  .ares-objectives-box {
+    background: rgba(20, 24, 34, 0.46);
+    border: 1px solid rgba(150, 165, 190, 0.22);
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ares-obj-row {
+    display: grid;
+    grid-template-columns: 155px 1fr 42px;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #ece4d4;
+  }
+
+  .ares-seg-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: "Consolas", monospace;
+    color: #d8d0c0;
+    font-size: 13px;
+  }
+
+  .ares-seg-track {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    gap: 2px;
+    padding: 1px 3px;
+  }
+
+  .ares-seg-block {
+    height: 9px;
+    border-radius: 1px;
+    background: rgba(120, 145, 170, 0.22);
+  }
+
+  .ares-seg-block.is-filled {
+    background: #33d9e6;
+    box-shadow: 0 0 5px rgba(51, 217, 230, 0.5);
+  }
+
+  .ares-obj-pct {
+    text-align: right;
+    font-weight: 600;
+    color: #f5efe0;
+    font-size: 12.5px;
+  }
+
+  /* Required Resources Tiles */
+  .ares-resources-heading {
+    font-size: 13.5px;
+    color: #e8decb;
+    margin: 10px 0 6px;
+  }
+
+  .ares-resources-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .ares-res-tile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px 5px 5px;
+    border-radius: 6px;
+    background: rgba(34, 48, 62, 0.48);
+    border: 1px solid rgba(120, 175, 205, 0.36);
+  }
+
+  .ares-res-tile.is-owned {
+    background: rgba(26, 68, 64, 0.58);
+    border-color: #4ce8c2;
+  }
+
+  .ares-res-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 4px;
+    background: rgba(16, 24, 34, 0.6);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  .ares-res-icon-box img {
+    width: 30px;
+    height: 30px;
     object-fit: contain;
     image-rendering: pixelated;
   }
 
-  .zr-mission-meta {
-    flex: 1;
+  .ares-res-meta {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 1px;
+    font-family: "Manrope", "Segoe UI", sans-serif;
   }
 
-  .zr-mission-badge-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
+  .ares-res-meta small {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ec8dc;
   }
 
-  .zr-mission-num {
-    font-size: 9px;
-    color: #7eeeff;
-    background: rgba(30, 80, 120, 0.55);
-    border: 1px solid #52b7e8;
-    padding: 3px 7px;
-    border-radius: 3px;
+  .ares-res-meta strong {
+    font-size: 11.5px;
+    color: #f3efe4;
   }
 
-  .zr-mission-status {
-    font-size: 8px;
-    padding: 3px 7px;
-    border-radius: 3px;
-    border: 1px solid #708098;
-    color: #c8d6e8;
-    background: rgba(20, 26, 38, 0.8);
-  }
-
-  .zr-mission-status.is-scrap {
-    border-color: #ffd166;
-    color: #ffe89e;
-    background: rgba(90, 62, 12, 0.65);
-  }
-
-  .zr-mission-status.is-done {
-    border-color: #38ef7d;
-    color: #a8ffcb;
-    background: rgba(14, 70, 40, 0.7);
-  }
-
-  .zr-mission-card-title {
-    margin: 0;
-    font-size: 12px;
-    color: #fff2cc;
-    line-height: 1.4;
-  }
-
-  .zr-mission-loc {
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 11px;
-    color: #9ec5eb;
-  }
-
-  .zr-mission-bullets {
-    margin: 0;
-    padding: 10px 12px;
-    list-style: none;
-    background: rgba(9, 12, 20, 0.78);
-    border: 1px solid rgba(110, 145, 195, 0.25);
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 12px;
-    line-height: 1.45;
-    color: #dce9f8;
-  }
-
-  .zr-mission-bullets strong {
-    color: #ffd68a;
-  }
-
-  .zr-scrap-chip {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: 3px;
-    background: rgba(255, 204, 102, 0.16);
-    border: 1px solid rgba(255, 204, 102, 0.55);
-    color: #ffe299;
-    font-weight: 700;
-  }
-
-  .zr-mission-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+  /* ── Compact Bottom Action Buttons (Does NOT stretch across whole screen) ─ */
+  .ares-cta-area {
     margin-top: auto;
+    padding-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
-  .zr-m-btn {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 9px;
-    padding: 8px 11px;
-    border-radius: 4px;
+  .ares-primary-btn {
+    padding: 9px 22px;
+    border-radius: 999px;
+    border: 1.5px solid #e6fff9;
+    background: linear-gradient(90deg, #3bd6c6 0%, #68eab8 55%, #ece56c 100%);
+    color: #16202a;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
     cursor: pointer;
-    border: 2px solid #5c7da8;
-    background: #1f304d;
-    color: #e6f2ff;
-    transition: transform 0.1s, filter 0.15s;
+    box-shadow: 0 4px 14px rgba(67, 222, 200, 0.35);
+    transition: transform 0.15s ease, filter 0.15s ease;
   }
 
-  .zr-m-btn:hover:not(:disabled) {
-    filter: brightness(1.15);
+  .ares-primary-btn:hover:not(:disabled) {
     transform: translateY(-1px);
+    filter: brightness(1.06);
   }
 
-  .zr-m-btn:disabled {
+  .ares-primary-btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+    filter: grayscale(0.5);
   }
 
-  .zr-m-btn.is-battle {
-    background: linear-gradient(180deg, #b84a27 0%, #6e200e 100%);
-    border-color: #ffca80;
-    color: #fff4dc;
+  .ares-abort-pill {
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(214, 198, 172, 0.42);
+    background: rgba(24, 22, 30, 0.55);
+    color: #ece2d0;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
   }
 
-  .zr-m-btn.is-repair {
-    background: linear-gradient(180deg, #1b8a5a 0%, #0e4f32 100%);
-    border-color: #69f0ae;
-    color: #eafff2;
-    flex: 1 1 100%;
+  .ares-abort-pill:hover {
+    border-color: #f3e6cc;
+    background: rgba(44, 38, 48, 0.75);
   }
 
-  .zr-mission-banner-toast {
-    margin: 0 20px 14px;
-    padding: 10px 14px;
-    border-radius: 5px;
-    border: 2px solid #38ef7d;
-    background: rgba(14, 62, 38, 0.85);
-    color: #caffdf;
-    font-size: 10px;
-    line-height: 1.5;
-    text-align: center;
+  .ares-transition-toast {
+    margin-bottom: 8px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    border: 1px solid #43dec8;
+    background: rgba(20, 62, 58, 0.65);
+    color: #d6fff6;
+    font-family: "Manrope", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
   }
 `;
+
+function SegmentedBar({ percent }) {
+  const totalBlocks = 20;
+  const filledBlocks = Math.round((Math.max(0, Math.min(100, percent)) / 100) * totalBlocks);
+  return (
+    <div className="ares-seg-bar-wrap">
+      <span>[</span>
+      <div className="ares-seg-track">
+        {Array.from({ length: totalBlocks }, (_, idx) => (
+          <span
+            key={idx}
+            className={`ares-seg-block${idx < filledBlocks ? " is-filled" : ""}`}
+          />
+        ))}
+      </div>
+      <span>]</span>
+    </div>
+  );
+}
 
 export default function MissionGuideModal({
   isOpen = true,
@@ -342,269 +673,480 @@ export default function MissionGuideModal({
   const navigate = useNavigate();
   const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
   const [mapProgress, setMapProgress] = useState(() => loadSavedProgress());
-  const [repairNotice, setRepairNotice] = useState(null);
+  const [transitionBanner, setTransitionBanner] = useState(null);
+
+  const activeSerial = getActiveSerialMission(missionProgress);
+  const defaultSelectedId = activeSerial?.id ?? Number(activeCharacterId || 1);
+  const [selectedId, setSelectedId] = useState(defaultSelectedId);
+
+  // Sync selected mission to current active serial mission (1 → 2 → 3 → 4 → 5 → 6)
+  useEffect(() => {
+    if (!isOpen) return;
+    const freshMission = loadMissionProgress();
+    const freshMap = loadSavedProgress();
+    setMissionProgress(freshMission);
+    setMapProgress(freshMap);
+    const currentSerial = getActiveSerialMission(freshMission);
+    if (currentSerial) {
+      setSelectedId(currentSerial.id);
+    } else if (activeCharacterId) {
+      setSelectedId(Number(activeCharacterId));
+    }
+  }, [isOpen, activeCharacterId]);
 
   if (!isOpen) return null;
 
   const scannedCharIds = (mapProgress.scannedSlots || [])
-    .map((slotIdx) => mapProgress.creatureOrder?.[slotIdx])
+    .map((slotIdx) => mapProgress.creatureOrder?.[slotIdx] ?? slotIdx + 1)
     .filter(Boolean);
 
-  const handleScanMissionAlien = (character) => {
-    const slotIdx = mapProgress.creatureOrder?.indexOf(character.id) ?? character.id - 1;
-    onClose?.();
-    navigate(`/scan?characterId=${character.id}&slot=${Math.max(0, slotIdx)}`, {
-      state: {
-        fromMap: true,
-        characterId: character.id,
-        slot: Math.max(0, slotIdx),
-      },
-    });
-  };
+  const playerPos = mapProgress.player || { x: 2100, y: 1050 };
 
-  const handleBattleMissionAlien = (character) => {
-    const slotIdx = Math.max(0, mapProgress.creatureOrder?.indexOf(character.id) ?? character.id - 1);
-    // Ensure creature is marked scanned before entering battle
-    markCreatureScanned(slotIdx, character.id);
-    setMapProgress(loadSavedProgress());
-    onClose?.();
-    navigate(`/battle?characterId=${character.id}&slot=${slotIdx}`, {
-      state: {
-        fromMap: true,
-        characterId: character.id,
-        slot: slotIdx,
-      },
-    });
-  };
+  // Strict serial timeline check: Mission N is ONLY unlocked when Mission N-1 is completed
+  const getMissionStateForChar = (char) => {
+    const isUnlocked =
+      char.id === 1 || missionProgress.completedMissions.includes(char.id - 1);
+    const isScanned =
+      isUnlocked &&
+      (scannedCharIds.includes(char.id) ||
+        missionProgress.defeatedAliens.includes(char.id) ||
+        missionProgress.completedMissions.includes(char.id));
+    const isDefeated =
+      isUnlocked &&
+      (missionProgress.defeatedAliens.includes(char.id) ||
+        missionProgress.obtainedScraps.includes(char.id) ||
+        missionProgress.completedMissions.includes(char.id));
+    const hasScrap =
+      isUnlocked &&
+      (missionProgress.obtainedScraps.includes(char.id) ||
+        missionProgress.completedMissions.includes(char.id));
+    const isCompleted = missionProgress.completedMissions.includes(char.id);
 
-  const handleRepairTask = (character) => {
-    const updated = completeMissionTask(character.id);
-    setMissionProgress(updated);
-    setMapProgress(loadSavedProgress());
-    setRepairNotice(
-      `★ Mission ${character.missionNumber} Complete: Used ${character.scrapName} to fix ${character.targetObject}! (${character.systemEffectLabel})`
+    const targetPt = hasScrap && !isCompleted ? char.cratePos : char.alienPos;
+    const distMeters = Math.max(
+      5,
+      Math.round(distance(playerPos, targetPt || { x: 1800, y: 950 }) * 3.2)
     );
-    onProgressChange?.(updated);
+
+    let stage = "locked";
+    if (isCompleted) stage = "completed";
+    else if (hasScrap) stage = "repair";
+    else if (isScanned && isUnlocked) stage = "battle";
+    else if (isUnlocked) stage = "scan";
+
+    return {
+      isUnlocked,
+      isScanned,
+      isDefeated,
+      hasScrap,
+      isCompleted,
+      distMeters,
+      stage,
+    };
   };
 
-  const systems = [
-    {
-      label: "Mission 1 · Crate",
-      value: missionProgress.hudUnlocked ? "HUD ONLINE" : "SMASHED",
-      online: missionProgress.hudUnlocked,
-    },
-    {
-      label: "Mission 2 · Rover",
-      value: missionProgress.roverPowerOnline ? "CORE ONLINE" : "STALLED",
-      online: missionProgress.roverPowerOnline,
-    },
-    {
-      label: "Mission 3 · Analyzer",
-      value: missionProgress.spectroAnalyzerRepaired ? "BIOSCAN MAX" : "OFFLINE",
-      online: missionProgress.spectroAnalyzerRepaired,
-    },
-    {
-      label: "Mission 4 · O₂ Filter",
-      value: missionProgress.carbonFilterRestored ? "CLEAN O₂ 100%" : "CLOGGED",
-      online: missionProgress.carbonFilterRestored,
-    },
-    {
-      label: "Mission 5 · Reports",
-      value: missionProgress.reportsDecrypted ? "DECRYPTED" : "ENCRYPTED",
-      online: missionProgress.reportsDecrypted,
-    },
-    {
-      label: "Mission 6 · S.U.N.A. IV",
-      value: missionProgress.finalTransmissionSent ? "BROADCASTED" : "SILENT",
-      online: missionProgress.finalTransmissionSent,
-    },
-  ];
+  // Ensure selectedChar can never point to a locked future mission
+  const rawSelectedChar =
+    CHARACTERS.find((c) => c.id === Number(selectedId)) || CHARACTERS[0];
+  const selectedChar = getMissionStateForChar(rawSelectedChar).isUnlocked
+    ? rawSelectedChar
+    : CHARACTERS.find((c) => c.id === (activeSerial?.id ?? 1)) || CHARACTERS[0];
+  const selectedState = getMissionStateForChar(selectedChar);
+
+  const handlePrimaryAction = () => {
+    if (!selectedState.isUnlocked) return;
+
+    if (selectedState.stage === "scan") {
+      onClose?.();
+      navigate(`/scan?characterId=${selectedChar.id}&slot=${selectedChar.slot}`, {
+        state: {
+          fromMap: true,
+          characterId: selectedChar.id,
+          slot: selectedChar.slot,
+        },
+      });
+      return;
+    }
+
+    if (selectedState.stage === "battle") {
+      markCreatureScanned(selectedChar.slot, selectedChar.id);
+      setMapProgress(loadSavedProgress());
+      onClose?.();
+      navigate(`/battle?characterId=${selectedChar.id}&slot=${selectedChar.slot}`, {
+        state: {
+          fromMap: true,
+          characterId: selectedChar.id,
+          slot: selectedChar.slot,
+        },
+      });
+      return;
+    }
+
+    if (selectedState.stage === "repair") {
+      const updated = completeMissionTask(selectedChar.id);
+      const freshMap = loadSavedProgress();
+      setMissionProgress(updated);
+      setMapProgress(freshMap);
+      onProgressChange?.(updated);
+
+      const nextSerial = getActiveSerialMission(updated);
+      if (nextSerial) {
+        setTransitionBanner(
+          `✓ Mission ${selectedChar.missionNumber} Complete! Unlocked Mission ${nextSerial.missionNumber}: ${nextSerial.title}`
+        );
+        setSelectedId(nextSerial.id);
+      } else {
+        setTransitionBanner(
+          `★ All 6 S.U.N.A. IV Directives Complete! Final Transmission Broadcasted.`
+        );
+      }
+      return;
+    }
+
+    if (selectedState.stage === "completed") {
+      const nextSerial = getActiveSerialMission(missionProgress);
+      if (nextSerial) {
+        setSelectedId(nextSerial.id);
+      } else {
+        onClose?.();
+        if (standalone) navigate("/map");
+      }
+    }
+  };
+
+  const reconPct = selectedState.isDefeated
+    ? 100
+    : selectedState.isScanned
+    ? 60
+    : selectedState.isUnlocked
+    ? 20
+    : 0;
+  const scrapPct = selectedState.hasScrap
+    ? 100
+    : selectedState.isScanned
+    ? 45
+    : selectedState.isUnlocked
+    ? 15
+    : 0;
+  const readinessPct = selectedState.isCompleted
+    ? 100
+    : selectedState.hasScrap
+    ? 75
+    : selectedState.isScanned
+    ? 40
+    : selectedState.isUnlocked
+    ? 25
+    : 0;
+
+  const getPrimaryCtaLabel = () => {
+    if (!selectedState.isUnlocked) {
+      return `Locked (Complete Mission ${selectedChar.id - 1})`;
+    }
+    if (selectedState.stage === "scan") {
+      return `Scan ${selectedChar.alienTitle} →`;
+    }
+    if (selectedState.stage === "battle") {
+      return `Battle ${selectedChar.alienTitle} →`;
+    }
+    if (selectedState.stage === "repair") {
+      return `Fix ${selectedChar.targetObject} →`;
+    }
+    const nextSerial = getActiveSerialMission(missionProgress);
+    return nextSerial
+      ? `Go to Mission ${nextSerial.missionNumber} →`
+      : `All Missions Complete`;
+  };
+
+  const getTaskHeaderLine = () => {
+    if (selectedState.stage === "scan") {
+      return `< Step 1/3: Locate & Scan ${selectedChar.alienTitle} >`;
+    }
+    if (selectedState.stage === "battle") {
+      return `< Step 2/3: Defeat ${selectedChar.alienNumber} for ${selectedChar.scrapName} >`;
+    }
+    if (selectedState.stage === "repair") {
+      return `< Step 3/3: ${selectedChar.taskActionLabel} >`;
+    }
+    return `< Completed: ${selectedChar.systemEffectLabel} >`;
+  };
 
   return (
     <div
-      className="zr-mission-backdrop"
+      className="ares-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Zero Requiem Pixel Mission Guide"
-      onClick={() => !standalone && onClose?.()}
+      aria-label="S.U.N.A. IV Mission Timeline"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) onClose();
+      }}
     >
-      <style>{GUIDE_CSS}</style>
-      <div className="zr-mission-window" onClick={(e) => e.stopPropagation()}>
-        <header className="zr-mission-header">
-          <div className="zr-mission-title-wrap">
-            <span className="zr-mission-eyebrow">
-              Zero Requiem // Scrap &amp; Mission Integration ({missionProgress.completedMissions.length}/6 Completed)
+      <style>{DIRECTIVE_CSS}</style>
+
+      <div className="ares-window">
+        {/* ── Left Vertical Timeline Step Sidebar (1 → 6) ──────────────── */}
+        <aside className="ares-sidebar" aria-label="Mission timeline progress">
+          <div className="ares-pennant" aria-hidden="true">
+            !
+          </div>
+
+          <div className="ares-nav-tabs">
+            {CHARACTERS.map((char) => {
+              const st = getMissionStateForChar(char);
+              const isCurrent = activeSerial?.id === char.id;
+              return (
+                <div
+                  key={char.id}
+                  className={`ares-step-dot${isCurrent ? " is-current" : ""}${
+                    st.isCompleted ? " is-done" : ""
+                  }${!st.isUnlocked ? " is-locked" : ""}`}
+                  title={
+                    st.isUnlocked
+                      ? `Mission ${char.missionNumber}: ${char.missionTitle}`
+                      : `Mission ${char.missionNumber} Locked (Complete Mission ${char.id - 1} first)`
+                  }
+                >
+                  {st.isCompleted ? "✓" : char.missionNumber}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="ares-sidebar-bottom" title="Completed Missions">
+            {missionProgress.completedMissions.length}/6
+          </div>
+        </aside>
+
+        {/* ── Main Content Area ────────────────────────────────────────── */}
+        <div className="ares-main">
+          <header className="ares-topbar">
+            <span className="ares-status-label">
+              <span>❖ Mission Timeline (1 → 6)</span>
+              <small style={{ color: "#8ceeff", fontSize: 12 }}>
+                {activeSerial
+                  ? `Active: Mission ${activeSerial.missionNumber}/6`
+                  : "All 6 Missions Completed"}
+              </small>
             </span>
-            <h2 className="zr-mission-heading">
-              PIXEL MISSION GUIDE &amp; FIELD REPAIRS
-            </h2>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {standalone && (
-              <button
-                type="button"
-                className="zr-m-btn"
-                onClick={() => navigate("/map")}
-              >
-                ← MARS MAP
-              </button>
-            )}
-            {onClose && (
-              <button
-                type="button"
-                className="zr-mission-close"
-                onClick={onClose}
-              >
-                ✕ CLOSE
-              </button>
-            )}
-          </div>
-        </header>
-
-        <div className="zr-mission-systems-bar">
-          {systems.map((sys) => (
-            <div
-              key={sys.label}
-              className={`zr-sys-pill${sys.online ? " is-online" : ""}`}
+            <button
+              type="button"
+              className="ares-close-circle"
+              onClick={() => {
+                if (onClose) onClose();
+                else if (standalone) navigate("/map");
+              }}
+              aria-label="Close mission screen"
             >
-              <small>{sys.label}</small>
-              <strong>{sys.value}</strong>
+              ✕
+            </button>
+          </header>
+
+          <div className="ares-columns">
+            {/* ── Left Column: Sequential Timeline 1 → 2 → 3 → 4 → 5 → 6 ─ */}
+            <div className="ares-left-col">
+              <div className="ares-directive-header-box">
+                <strong>◈ Serial Expedition Timeline</strong>
+                <span>Complete each mission in order (1 → 6) to unlock the next</span>
+              </div>
+
+              <div className="ares-timeline-list">
+                {CHARACTERS.map((char) => {
+                  const st = getMissionStateForChar(char);
+                  const isSelected = selectedChar.id === char.id;
+
+                  return (
+                    <button
+                      key={char.id}
+                      type="button"
+                      disabled={!st.isUnlocked}
+                      className={`ares-mission-item${isSelected ? " is-selected" : ""}${
+                        !st.isUnlocked ? " is-locked" : ""
+                      }`}
+                      onClick={() => {
+                        if (!st.isUnlocked) return;
+                        setTransitionBanner(null);
+                        setSelectedId(char.id);
+                      }}
+                    >
+                      <span className="ares-timeline-num">{char.missionNumber}</span>
+
+                      <div className="ares-item-text">
+                        <span className="ares-item-title">{char.missionTitle}</span>
+                        <span className="ares-item-dist">
+                          {st.isCompleted
+                            ? `✓ ${char.targetObject} Fixed`
+                            : !st.isUnlocked
+                            ? `🔒 Locked — Finish Mission ${char.id - 1} first`
+                            : `${st.distMeters}m · ${
+                                st.stage === "repair"
+                                  ? `Fix ${char.targetObject}`
+                                  : char.alienTitle
+                              }`}
+                        </span>
+                      </div>
+
+                      {isSelected ? (
+                        <div className="ares-item-badge-active" aria-hidden="true">
+                          <span>❯</span>
+                        </div>
+                      ) : (
+                        <div
+                          className={`ares-item-badge-pin${
+                            st.isCompleted ? " is-done" : ""
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {st.isCompleted ? "✓" : !st.isUnlocked ? "🔒" : "◎"}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          ))}
-        </div>
 
-        {repairNotice && (
-          <div className="zr-mission-banner-toast" role="status">
-            {repairNotice}
-          </div>
-        )}
+            {/* ── Center Vertical Line ─────────────────────────────────── */}
+            <div className="ares-v-divider" aria-hidden="true" />
 
-        <div className="zr-mission-list">
-          {CHARACTERS.map((char) => {
-            const isUnlocked =
-              char.id === 1 || missionProgress.completedMissions.includes(char.id - 1);
-            const isScanned =
-              scannedCharIds.includes(char.id) ||
-              missionProgress.defeatedAliens.includes(char.id) ||
-              missionProgress.completedMissions.includes(char.id);
-            const hasScrap = missionProgress.obtainedScraps.includes(char.id);
-            const isCompleted = missionProgress.completedMissions.includes(char.id);
-            const isHighlighted = Number(activeCharacterId) === char.id;
+            {/* ── Right Column: Active Unlocked Mission Details ────────── */}
+            <div className="ares-right-col">
+              {transitionBanner && (
+                <div className="ares-transition-toast" role="status">
+                  {transitionBanner}
+                </div>
+              )}
 
-            return (
-              <article
-                key={char.id}
-                className={`zr-mission-card${
-                  isCompleted ? " is-completed" : isHighlighted ? " is-active" : ""
-                }`}
-                style={{ opacity: isUnlocked ? 1 : 0.62 }}
-              >
-                <div className="zr-mission-card-top">
-                  <div className="zr-mission-avatar">
+              <h2 className="ares-detail-title">
+                Mission {selectedChar.missionNumber}: {selectedChar.missionTitle}
+              </h2>
+              <div className="ares-detail-loc">
+                <span>📍</span>
+                <span>{selectedChar.locationTag}</span>
+              </div>
+
+              <div className="ares-ornament-line" aria-hidden="true" />
+
+              <div className="ares-task-angle-header">{getTaskHeaderLine()}</div>
+
+              <p className="ares-story-desc">
+                {selectedState.isCompleted
+                  ? selectedChar.completionStory
+                  : selectedChar.arrivalBriefing}
+              </p>
+
+              <ul className="ares-story-sub-list">
+                <li>
+                  <strong>1. Encounter:</strong> {selectedChar.alienTitle} — {selectedChar.behavior}
+                </li>
+                <li>
+                  <strong>2. Battle &amp; Scrap:</strong> {selectedChar.scrapBattleText}
+                </li>
+                <li>
+                  <strong>3. Repair Task:</strong> {selectedChar.taskDescription}
+                </li>
+              </ul>
+
+              <div className="ares-ornament-line" aria-hidden="true" />
+
+              <div className="ares-objectives-heading">Mission Objectives:</div>
+              <div className="ares-objectives-box">
+                <div className="ares-obj-row">
+                  <span>Alien Recon &amp; Combat:</span>
+                  <SegmentedBar percent={reconPct} />
+                  <span className="ares-obj-pct">{reconPct}%</span>
+                </div>
+
+                <div className="ares-obj-row">
+                  <span>Scrap Salvage:</span>
+                  <SegmentedBar percent={scrapPct} />
+                  <span className="ares-obj-pct">{scrapPct}%</span>
+                </div>
+
+                <div className="ares-obj-row">
+                  <span>System Repair:</span>
+                  <SegmentedBar percent={readinessPct} />
+                  <span className="ares-obj-pct">{readinessPct}%</span>
+                </div>
+              </div>
+
+              <div className="ares-resources-heading">Mission Target &amp; Parts</div>
+              <div className="ares-resources-row">
+                {/* Resource Tile 1: Target Alien */}
+                <div
+                  className={`ares-res-tile${selectedState.isDefeated ? " is-owned" : ""}`}
+                >
+                  <div className="ares-res-icon-box">
                     <img
-                      src={isScanned ? char.character : char.silhouette}
-                      alt={isScanned ? char.alienTitle : `Undiscovered ${char.alienNumber}`}
+                      src={
+                        selectedState.isScanned
+                          ? selectedChar.character
+                          : selectedChar.silhouette
+                      }
+                      alt={selectedChar.alienTitle}
                     />
                   </div>
-                  <div className="zr-mission-meta">
-                    <div className="zr-mission-badge-row">
-                      <span className="zr-mission-num">
-                        MISSION {char.missionNumber} · {char.code}
-                      </span>
-                      <span
-                        className={`zr-mission-status${
-                          isCompleted
-                            ? " is-done"
-                            : hasScrap
-                            ? " is-scrap"
-                            : ""
-                        }`}
-                      >
-                        {isCompleted
-                          ? "✓ TASK REPAIRED"
-                          : !isUnlocked
-                          ? `🔒 COMPLETE MISSION ${char.id - 1} FIRST`
-                          : hasScrap
-                          ? `⚙ ${char.scrapName.toUpperCase()} READY`
-                          : "⚔ ACTIVE MISSION"}
-                      </span>
-                    </div>
-                    <h3 className="zr-mission-card-title">
-                      Mission {char.missionNumber}: {char.missionTitle}
-                    </h3>
-                    <span className="zr-mission-loc">{char.locationTag}</span>
+                  <div className="ares-res-meta">
+                    <small>{selectedState.isDefeated ? "✓ Defeated" : "Alien"}</small>
+                    <strong>{selectedChar.name}</strong>
                   </div>
                 </div>
 
-                <ul className="zr-mission-bullets">
-                  <li>
-                    <strong>The Alien:</strong>{" "}
-                    <strong>{char.alienTitle}</strong> — {char.behavior}
-                  </li>
-                  <li>
-                    <strong>The Battle &amp; Scrap:</strong> Defeat {char.alienNumber} to obtain{" "}
-                    <span className="zr-scrap-chip">{char.scrapName}</span>.
-                  </li>
-                  <li>
-                    <strong>The Task:</strong> {char.taskDescription}
-                  </li>
-                </ul>
-
-                <div className="zr-mission-actions">
-                  {!isUnlocked ? (
-                    <button type="button" className="zr-m-btn" disabled>
-                      🔒 Unlocks after Mission {char.id - 1} is completed
-                    </button>
-                  ) : (
-                    <>
-                      {!hasScrap && !isCompleted && (
-                        <>
-                          <button
-                            type="button"
-                            className="zr-m-btn"
-                            onClick={() => handleScanMissionAlien(char)}
-                          >
-                            {isScanned ? "✦ Re-Scan Alien" : "✦ Scan Alien"}
-                          </button>
-                          <button
-                            type="button"
-                            className="zr-m-btn is-battle"
-                            disabled={!isScanned}
-                            onClick={() => handleBattleMissionAlien(char)}
-                          >
-                            {isScanned
-                              ? `⚔ Battle ${char.name}`
-                              : "🔒 Scan on Map First"}
-                          </button>
-                        </>
-                      )}
-
-                      {hasScrap && !isCompleted && (
-                        <button
-                          type="button"
-                          className="zr-m-btn is-repair"
-                          onClick={() => handleRepairTask(char)}
-                        >
-                          🔧 Use {char.scrapName} → {char.taskActionLabel}
-                        </button>
-                      )}
-
-                      {isCompleted && (
-                        <button
-                          type="button"
-                          className="zr-m-btn is-repair"
-                          disabled
-                        >
-                          ✓ {char.targetObject} Repaired ({char.systemEffectLabel})
-                        </button>
-                      )}
-                    </>
-                  )}
+                {/* Resource Tile 2: Scrap / Module */}
+                <div
+                  className={`ares-res-tile${selectedState.hasScrap ? " is-owned" : ""}`}
+                >
+                  <div className="ares-res-icon-box" style={{ color: "#5ce6d0" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="6" y="4" width="12" height="16" rx="2" />
+                      <line x1="10" y1="2" x2="14" y2="2" />
+                      <line x1="9" y1="9" x2="15" y2="9" />
+                      <line x1="9" y1="13" x2="15" y2="13" />
+                    </svg>
+                  </div>
+                  <div className="ares-res-meta">
+                    <small>{selectedState.hasScrap ? "✓ Salvaged" : "Scrap Drop"}</small>
+                    <strong>{selectedChar.scrapName}</strong>
+                  </div>
                 </div>
-              </article>
-            );
-          })}
+
+                {/* Resource Tile 3: Target Crate / System */}
+                <div
+                  className={`ares-res-tile${selectedState.isCompleted ? " is-owned" : ""}`}
+                >
+                  <div className="ares-res-icon-box" style={{ color: "#7ad7ff" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+                      <circle cx="12" cy="12" r="4" />
+                    </svg>
+                  </div>
+                  <div className="ares-res-meta">
+                    <small>{selectedState.isCompleted ? "✓ Repaired" : "Crate Target"}</small>
+                    <strong>{selectedChar.targetObject}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="ares-cta-area">
+                <button
+                  type="button"
+                  className="ares-abort-pill"
+                  onClick={() => {
+                    if (onClose) onClose();
+                    else if (standalone) navigate("/map");
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="ares-primary-btn"
+                  disabled={!selectedState.isUnlocked}
+                  onClick={handlePrimaryAction}
+                >
+                  {getPrimaryCtaLabel()}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

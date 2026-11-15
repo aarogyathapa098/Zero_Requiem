@@ -6,6 +6,7 @@ import MissionGuideModal from "../components/MissionGuideModal.jsx";
 import { getCharacterById } from "../data/characters.js";
 import {
   completeMissionTask,
+  getActiveSerialMission,
   loadMissionProgress,
   recordAlienDefeated,
 } from "../data/missions.js";
@@ -221,38 +222,47 @@ export default function BattleScreen() {
     .map((slotIdx) => creatureOrder[slotIdx])
     .filter(Boolean);
 
-  const resolvedEnemyId =
+  // Mission & UI state
+  const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
+  const [showMissionGuide, setShowMissionGuide] = useState(false);
+
+  const activeSerial = getActiveSerialMission(missionProgress);
+  const maxUnlockedId = activeSerial ? activeSerial.id : 6;
+  const rawEnemyId =
     paramCharId !== null
       ? Number(paramCharId)
       : scannedCharIds[scannedCharIds.length - 1] ?? null;
 
+  const isRequestedUnlocked =
+    rawEnemyId !== null &&
+    (rawEnemyId === 1 || missionProgress.completedMissions.includes(rawEnemyId - 1));
+  const resolvedEnemyId = isRequestedUnlocked ? rawEnemyId : maxUnlockedId;
+
   const isTargetScanned =
     resolvedEnemyId !== null &&
     (scannedCharIds.includes(resolvedEnemyId) ||
-      (paramSlot !== null && scannedSlots.includes(Number(paramSlot))));
+      (paramSlot !== null &&
+        isRequestedUnlocked &&
+        scannedSlots.includes(Number(paramSlot))));
 
   const enemyCreature = getCharacterById(resolvedEnemyId ?? 1);
   const enemyName = enemyCreature.name;
   const enemySprite = enemyCreature.character;
   const maxEnemyHp = enemyCreature.enemyMaxHp || 85;
 
-  // Enforce fighting only after scanning the respective creature
+  // Enforce fighting only after scanning the respective unlocked creature
   useEffect(() => {
     if (!isTargetScanned) {
-      if (paramCharId !== null) {
+      if (resolvedEnemyId !== null) {
         const query = new URLSearchParams();
-        query.set("characterId", String(paramCharId));
-        if (paramSlot !== null) query.set("slot", String(paramSlot));
+        query.set("characterId", String(resolvedEnemyId));
+        query.set("slot", String(resolvedEnemyId - 1));
         navigate(`/scan?${query.toString()}`, { replace: true });
       } else {
         navigate("/map", { replace: true });
       }
     }
-  }, [isTargetScanned, navigate, paramCharId, paramSlot]);
-
-  // Mission & UI state
-  const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
-  const [showMissionGuide, setShowMissionGuide] = useState(false);
+  }, [isTargetScanned, navigate, resolvedEnemyId]);
 
   // Audio state
   const [muted, setMuted] = useState(false);
@@ -748,7 +758,9 @@ export default function BattleScreen() {
                 onClick={() => navigate("/map")}
               >
                 {isCurrentMissionRepaired
-                  ? "← CONTINUE ON MARS MAP"
+                  ? enemyCreature.missionNumber < 6
+                    ? `▶ PROCEED TO MISSION ${enemyCreature.missionNumber + 1} ON MAP →`
+                    : "★ RETURN TO MARS SURFACE (ALL 6 COMPLETE)"
                   : `← RETURN TO MAP & FIX ${enemyCreature.targetObject.toUpperCase()}`}
               </button>
               <button
@@ -756,7 +768,7 @@ export default function BattleScreen() {
                 className="battle-end-btn"
                 onClick={() => setShowMissionGuide(true)}
               >
-                📋 MISSION LOG ({missionProgress.completedMissions.length}/6)
+                ❖ DIRECTIVES ({missionProgress.completedMissions.length}/6)
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import * as THREE from "three";
 import logoUrl from "../../../assets/zero-requiem-logo.png";
 import marsPhotoUrl from "../../../assets/mars-surface.jpg";
 import { resetSavedProgress } from "../../map/game/marsModel.js";
+import { resetMissionProgress } from "../data/missions.js";
 import "./MenuScreen.css";
 
 interface OverlayContent {
@@ -13,7 +14,7 @@ interface OverlayContent {
 
 const ABOUT_OVERLAY: OverlayContent = {
   title: "About",
-  body: "Project: Zero Requiem is set in the S.U.N.A IV system. Replace this text with your story and credits.",
+  body: "Project: Zero Requiem is set in the S.U.N.A. IV system. Survive the Martian surface, repair your failing life-support systems, uncover why previous crews went dark, and broadcast the final transmission back to Earth.",
 };
 
 export default function MenuScreen() {
@@ -29,8 +30,15 @@ export default function MenuScreen() {
   const handlePlay = () => {
     if (leaving) return;
     resetSavedProgress();
+    resetMissionProgress();
     setLeaving(true);
     leaveTimerRef.current = window.setTimeout(() => navigate("/cutscene"), 550);
+  };
+
+  const handleMapMode = () => {
+    if (leaving) return;
+    setLeaving(true);
+    leaveTimerRef.current = window.setTimeout(() => navigate("/"), 400);
   };
 
   useEffect(() => {
@@ -573,6 +581,28 @@ export default function MenuScreen() {
       <div className="menu-sky" />
       <canvas ref={starsRef} className="menu-stars" aria-hidden="true" />
       <canvas ref={glRef} className="menu-gl" aria-hidden="true" />
+
+      {/* Top Left: Map Mode Gamified Button */}
+      <button
+        type="button"
+        className="menu-mapmode-btn"
+        onClick={handleMapMode}
+        aria-label="Switch to Map Mode: Explore Mars surface and rover trail"
+      >
+        <div className="menu-mapmode-icon" aria-hidden="true">
+          <span>🗺️</span>
+        </div>
+        <div className="menu-mapmode-text">
+          <div className="menu-mapmode-header">
+            <span className="menu-mapmode-title">MAP MODE</span>
+            <span className="menu-mapmode-tag">SURFACE</span>
+          </div>
+          <span className="menu-mapmode-sub">
+            Explore Mars surface & rover trail
+          </span>
+        </div>
+        <span className="menu-mapmode-arrow" aria-hidden="true">➔</span>
+      </button>
 
       <div className="menu-panel" ref={panelRef}>
         <img className="menu-logo" alt="Project: Zero Requiem" src={logoUrl} />

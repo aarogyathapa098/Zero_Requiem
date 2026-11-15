@@ -7,15 +7,25 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test src/shared/marsGrid/marsGrid.test.js src/modes/map/scripts/camera.test.js src/shared/pathPlanning/tests/astar.test.js src/shared/pathPlanning/tests/dijkstra.test.js src/shared/pathPlanning/tests/costModel.test.js src/shared/pathPlanning/tests/pathValidation.test.js src/shared/pathPlanning/tests/travelTime.test.js src/shared/pathPlanning/tests/recommendation.test.js src/shared/environment/tests/weather.test.js",
+    "test:grid": "node --test src/shared/marsGrid/marsGrid.test.js",
+    "test:paths": "node --test src/shared/pathPlanning/tests/astar.test.js src/shared/pathPlanning/tests/dijkstra.test.js src/shared/pathPlanning/tests/costModel.test.js src/shared/pathPlanning/tests/pathValidation.test.js",
+    "benchmark:paths": "node scripts/benchmark-path-planning.mjs",
+    "validate:grid": "node scripts/validate-mars-grid.mjs"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.0",
+    "@react-three/fiber": "^9.4.0",
+    "cesium": "^1.147.0",
+    "geotiff": "^3.1.0-beta.0",
     "lucide-react": "^1.73.0",
     "ol": "^10.11.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5",
     "three": "^0.187.0",
+    "vite-plugin-static-copy": "^4.1.1",
     "zustand": "^5.1.0"
   },
   "devDependencies": {

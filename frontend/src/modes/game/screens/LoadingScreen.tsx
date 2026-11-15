@@ -60,7 +60,7 @@ export default function LoadingScreen() {
         <span className="loading-percent">{Math.round(progress)}%</span>
       </main>
 
-      <Link className="loading-back" to="/">
+      <Link className="loading-back" to="/game">
         Return to menu
       </Link>
     </div>

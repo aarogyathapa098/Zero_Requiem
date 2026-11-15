@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CharacterDiscover from "./CharacterDiscover";
+import MissionGuideModal from "../components/MissionGuideModal";
 import { CHARACTERS } from "../data/characters";
+import {
+  getActiveSerialMission,
+  isMissionUnlocked,
+  loadMissionProgress,
+  MISSIONS,
+} from "../data/missions";
 import { loadSavedProgress, markCreatureScanned } from "../../map/game/marsModel";
 
 const PILL_BUTTON_STYLE = {
@@ -33,26 +40,33 @@ export default function ScanningScreen({ initialIndex = 0 }) {
   const paramSlot = searchParams.get("slot") ?? location.state?.slot ?? null;
   const fromMap = Boolean(location.state?.fromMap || paramSlot !== null || paramCharId !== null);
 
+  const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
+
   const resolvedInitialIndex = (() => {
+    const activeSerial = getActiveSerialMission(missionProgress);
+    const maxAllowedId = activeSerial ? activeSerial.id : 5;
     if (paramCharId !== null) {
-      const foundIndex = CHARACTERS.findIndex((item) => item.id === Number(paramCharId));
+      const requestedId = Number(paramCharId);
+      const isUnlocked = isMissionUnlocked(requestedId, missionProgress);
+      const targetId = isUnlocked ? requestedId : maxAllowedId;
+      const foundIndex = CHARACTERS.findIndex((item) => item.id === targetId);
       if (foundIndex !== -1) return foundIndex;
     }
-    return initialIndex % CHARACTERS.length;
+    const activeIndex = CHARACTERS.findIndex((item) => item.id === maxAllowedId);
+    return activeIndex !== -1 ? activeIndex : initialIndex % CHARACTERS.length;
   })();
 
-  const [index, setIndex] = useState(resolvedInitialIndex);
+  const [index] = useState(resolvedInitialIndex);
   const [discovered, setDiscovered] = useState(false);
   const [scannedCount, setScannedCount] = useState(() => loadSavedProgress().scannedSlots.length);
+  const [showMissionGuide, setShowMissionGuide] = useState(false);
 
   const current = CHARACTERS[index];
 
   const handleDiscover = () => {
     setDiscovered(true);
-    if (fromMap) {
-      const updated = markCreatureScanned(paramSlot, current.id);
-      setScannedCount(updated.scannedSlots.length);
-    }
+    const updated = markCreatureScanned(paramSlot ?? current.slot, current.id);
+    setScannedCount(updated.scannedSlots.length);
   };
 
   const handleReturnToMap = () => {
@@ -62,20 +76,15 @@ export default function ScanningScreen({ initialIndex = 0 }) {
   const handleFightCreature = () => {
     const query = new URLSearchParams();
     query.set("characterId", String(current.id));
-    if (paramSlot !== null) query.set("slot", String(paramSlot));
+    query.set("slot", String(paramSlot ?? current.slot));
     navigate(`/battle?${query.toString()}`, {
       replace: true,
       state: {
         fromMap: true,
         characterId: current.id,
-        slot: paramSlot,
+        slot: paramSlot ?? current.slot,
       },
     });
-  };
-
-  const handleNext = () => {
-    setDiscovered(false);
-    setIndex((prev) => (prev + 1) % CHARACTERS.length);
   };
 
   useEffect(() => {
@@ -99,8 +108,31 @@ export default function ScanningScreen({ initialIndex = 0 }) {
         silhouetteSrc={current.silhouette}
         characterSrc={current.character}
         characterName={current.name}
+        alienTitle={current.alienTitle}
+        missionNumber={current.missionNumber}
+        missionTitle={current.missionTitle}
+        behavior={current.behavior}
+        scrapName={current.scrapName}
+        taskDescription={current.taskDescription}
         onDiscover={handleDiscover}
       />
+
+      {/* Top-Right Compact Mission Timeline Button */}
+      <button
+        type="button"
+        onClick={() => setShowMissionGuide(true)}
+        style={{
+          ...PILL_BUTTON_STYLE,
+          left: "auto",
+          right: 22,
+          padding: "7px 14px",
+          borderColor: "rgba(67, 232, 216, 0.78)",
+          background: "rgba(18, 26, 38, 0.72)",
+          color: "#e6fffb",
+        }}
+      >
+        ❖ Missions ({missionProgress.completedMissions.length}/{MISSIONS.length})
+      </button>
 
       {fromMap ? (
         discovered ? (
@@ -139,12 +171,13 @@ export default function ScanningScreen({ initialIndex = 0 }) {
                 ...PILL_BUTTON_STYLE,
                 position: "static",
                 border: "1.5px solid rgba(255, 204, 128, 0.88)",
-                background: "linear-gradient(180deg, rgba(184, 74, 39, 0.92) 0%, rgba(110, 34, 18, 0.94) 100%)",
+                background:
+                  "linear-gradient(180deg, rgba(184, 74, 39, 0.92) 0%, rgba(110, 34, 18, 0.94) 100%)",
                 color: "#fff4dc",
                 boxShadow: "0 6px 24px rgba(0, 0, 0, 0.55), 0 0 18px rgba(218, 98, 44, 0.45)",
               }}
             >
-              ⚔ Fight {current.name} →
+              ⚔ Battle {current.alienTitle} for {current.scrapName} →
             </button>
           </div>
         ) : (
@@ -169,14 +202,15 @@ export default function ScanningScreen({ initialIndex = 0 }) {
               zIndex: 20,
               display: "flex",
               gap: 12,
+              flexWrap: "wrap",
             }}
           >
             <button
               type="button"
-              onClick={handleNext}
+              onClick={handleReturnToMap}
               style={{ ...PILL_BUTTON_STYLE, position: "static" }}
             >
-              Next Creature ({index + 1}/{CHARACTERS.length}) →
+              ← Return to Mars Map
             </button>
             <button
               type="button"
@@ -185,15 +219,23 @@ export default function ScanningScreen({ initialIndex = 0 }) {
                 ...PILL_BUTTON_STYLE,
                 position: "static",
                 border: "1.5px solid rgba(255, 204, 128, 0.88)",
-                background: "linear-gradient(180deg, rgba(184, 74, 39, 0.92) 0%, rgba(110, 34, 18, 0.94) 100%)",
+                background:
+                  "linear-gradient(180deg, rgba(184, 74, 39, 0.92) 0%, rgba(110, 34, 18, 0.94) 100%)",
                 color: "#fff4dc",
               }}
             >
-              ⚔ Fight {current.name} →
+              ⚔ Battle {current.alienTitle} for {current.scrapName} →
             </button>
           </div>
         )
       )}
+
+      <MissionGuideModal
+        isOpen={showMissionGuide}
+        onClose={() => setShowMissionGuide(false)}
+        activeCharacterId={current.id}
+        onProgressChange={(next) => setMissionProgress(next)}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import backgroundImg from "../assets/images/background.jpg";
-import characterImg from "../assets/images/characters/1.png";
+import characterImg from "../assets/images/companion_back.png";
 import MissionGuideModal from "../components/MissionGuideModal.jsx";
 import { getCharacterById } from "../data/characters.js";
 import {
@@ -539,11 +539,9 @@ export default function BattleScreen() {
           {/* Enemy Pedestal & Sprite (Right Enemy matches scanned creature) */}
           <div className="battle-pedestal-enemy" />
           <div
-            className={`combatant-enemy ${hasEntered ? "has-entered" : ""} ${
-              isEnemyHit ? "is-hit" : ""
-            } ${isEnemyLunging ? "is-lunging" : ""} ${
-              isEnemyFainted ? "is-fainted" : ""
-            }`}
+            className={`combatant-enemy ${hasEntered ? "has-entered" : ""} ${isEnemyHit ? "is-hit" : ""
+              } ${isEnemyLunging ? "is-lunging" : ""} ${isEnemyFainted ? "is-fainted" : ""
+              }`}
           >
             <img
               src={enemySprite}
@@ -555,11 +553,9 @@ export default function BattleScreen() {
           {/* Player Pedestal & Sprite (Left Companion always permanent) */}
           <div className="battle-pedestal-player" />
           <div
-            className={`combatant-player ${hasEntered ? "has-entered" : ""} ${
-              isPlayerCharging ? "is-charging" : ""
-            } ${isPlayerHit ? "is-hit" : ""} ${
-              isPlayerFainted ? "is-fainted" : ""
-            }`}
+            className={`combatant-player ${hasEntered ? "has-entered" : ""} ${isPlayerCharging ? "is-charging" : ""
+              } ${isPlayerHit ? "is-hit" : ""} ${isPlayerFainted ? "is-fainted" : ""
+              }`}
           >
             <img
               src={characterImg}
@@ -652,9 +648,8 @@ export default function BattleScreen() {
                     <button
                       key={move.name}
                       type="button"
-                      className={`move-btn ${
-                        selectedMoveIndex === idx ? "is-active" : ""
-                      }`}
+                      className={`move-btn ${selectedMoveIndex === idx ? "is-active" : ""
+                        }`}
                       onMouseEnter={() => setSelectedMoveIndex(idx)}
                       onClick={() => handleExecuteMove(idx)}
                     >
@@ -776,10 +771,10 @@ export default function BattleScreen() {
                 {!enemyCreature.isMission
                   ? "← RETURN TO MARS MAP"
                   : isCurrentMissionRepaired
-                  ? enemyCreature.missionNumber < 5
-                    ? `▶ PROCEED TO NEXT MISSION ON MAP →`
-                    : "★ RETURN TO MARS SURFACE (ALL MISSIONS COMPLETE)"
-                  : `← RETURN TO MAP & FIX ${enemyCreature.targetObject.toUpperCase()}`}
+                    ? enemyCreature.missionNumber < 5
+                      ? `▶ PROCEED TO NEXT MISSION ON MAP →`
+                      : "★ RETURN TO MARS SURFACE (ALL MISSIONS COMPLETE)"
+                    : `← RETURN TO MAP & FIX ${enemyCreature.targetObject.toUpperCase()}`}
               </button>
               <button
                 type="button"

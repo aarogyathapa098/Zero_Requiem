@@ -3,77 +3,202 @@
    ========================================================================== */
 
 @keyframes bgDrift {
-  0% { transform: scale(1.05) translate(0, 0); }
-  50% { transform: scale(1.08) translate(-1.5%, -1%); }
-  100% { transform: scale(1.05) translate(0, 0); }
+  0% {
+    transform: scale(1.05) translate(0, 0);
+  }
+
+  50% {
+    transform: scale(1.08) translate(-1.5%, -1%);
+  }
+
+  100% {
+    transform: scale(1.05) translate(0, 0);
+  }
 }
 
 @keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100%);
+  }
 }
 
 @keyframes slideInEnemy {
-  0% { transform: translateX(160%) scale(0.9); opacity: 0; }
-  60% { transform: translateX(-4%) scale(1.02); opacity: 1; }
-  100% { transform: translateX(0) scale(1); opacity: 1; }
+  0% {
+    transform: translateX(160%) scale(0.9);
+    opacity: 0;
+  }
+
+  60% {
+    transform: translateX(-4%) scale(1.02);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes slideInPlayer {
-  0% { transform: translateX(-160%) scale(1.1); opacity: 0; }
-  60% { transform: translateX(4%) scale(1.15); opacity: 1; }
-  100% { transform: translateX(0) scale(1.1); opacity: 1; }
+  0% {
+    transform: translateX(-160%) scale(1.1);
+    opacity: 0;
+  }
+
+  60% {
+    transform: translateX(4%) scale(1.15);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(0) scale(1.1);
+    opacity: 1;
+  }
 }
 
 @keyframes slideInHudEnemy {
-  0% { transform: translateX(-140%); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
+  0% {
+    transform: translateX(-140%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes slideInHudPlayer {
-  0% { transform: translateX(140%); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
+  0% {
+    transform: translateX(140%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes idleBob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 @keyframes idlePlayerBob {
-  0%, 100% { transform: scale(1.1) translateY(0); }
-  50% { transform: scale(1.1) translateY(-5px); }
+
+  0%,
+  100% {
+    transform: scale(1.1) translateY(0);
+  }
+
+  50% {
+    transform: scale(1.1) translateY(-5px);
+  }
 }
 
 @keyframes screenWipe {
-  0% { opacity: 1; transform: scaleY(1); }
-  100% { opacity: 0; transform: scaleY(0); }
+  0% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
 }
 
 @keyframes blinkArrow {
-  0%, 100% { opacity: 1; transform: translateY(0); }
-  50% { opacity: 0.2; transform: translateY(3px); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 0.2;
+    transform: translateY(3px);
+  }
 }
 
 @keyframes shakeScreen {
-  0%, 100% { transform: translate(0, 0); }
-  20% { transform: translate(-8px, 6px); }
-  40% { transform: translate(8px, -6px); }
-  60% { transform: translate(-6px, -4px); }
-  80% { transform: translate(6px, 4px); }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  20% {
+    transform: translate(-8px, 6px);
+  }
+
+  40% {
+    transform: translate(8px, -6px);
+  }
+
+  60% {
+    transform: translate(-6px, -4px);
+  }
+
+  80% {
+    transform: translate(6px, 4px);
+  }
 }
 
 @keyframes damageFlash {
-  0%, 100% { opacity: 1; filter: none; }
-  20%, 60% { opacity: 0.1; filter: brightness(3) saturate(0.2) drop-shadow(0 0 16px #ff4040); }
-  40%, 80% { opacity: 0.9; filter: brightness(2) drop-shadow(0 0 12px #ff4040); }
+
+  0%,
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+
+  20%,
+  60% {
+    opacity: 0.1;
+    filter: brightness(3) saturate(0.2) drop-shadow(0 0 16px #ff4040);
+  }
+
+  40%,
+  80% {
+    opacity: 0.9;
+    filter: brightness(2) drop-shadow(0 0 12px #ff4040);
+  }
 }
 
 @keyframes sonicCharge {
-  0% { transform: scale(1.1) translate(0, 0); filter: brightness(1); }
-  30% { transform: scale(1.05) translate(-10px, 4px); filter: brightness(1.6) drop-shadow(0 0 18px #00e5ff); }
-  60% { transform: scale(1.2) translate(14px, -6px); filter: brightness(2) drop-shadow(0 0 25px #00f0ff); }
-  100% { transform: scale(1.1) translate(0, 0); filter: brightness(1); }
+  0% {
+    transform: scale(1.1) translate(0, 0);
+    filter: brightness(1);
+  }
+
+  30% {
+    transform: scale(1.05) translate(-10px, 4px);
+    filter: brightness(1.6) drop-shadow(0 0 18px #00e5ff);
+  }
+
+  60% {
+    transform: scale(1.2) translate(14px, -6px);
+    filter: brightness(2) drop-shadow(0 0 25px #00f0ff);
+  }
+
+  100% {
+    transform: scale(1.1) translate(0, 0);
+    filter: brightness(1);
+  }
 }
 
 @keyframes sonicPulseWave {
@@ -82,10 +207,12 @@
     transform: translate(-50%, -50%) scale(0.2) rotate(-20deg);
     border-width: 8px;
   }
+
   50% {
     opacity: 1;
     border-color: #00ffff;
   }
+
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(2.8) rotate(40deg);
@@ -98,15 +225,18 @@
     width: 0%;
     opacity: 0.3;
   }
+
   40% {
     width: 100%;
     opacity: 1;
     filter: drop-shadow(0 0 16px #00ffff) drop-shadow(0 0 28px #3d8bff);
   }
+
   80% {
     width: 100%;
     opacity: 0.8;
   }
+
   100% {
     width: 100%;
     opacity: 0;
@@ -114,14 +244,30 @@
 }
 
 @keyframes enemyLunge {
-  0% { transform: translate(0, 0); }
-  40% { transform: translate(-30px, 20px) scale(1.08); filter: drop-shadow(0 0 12px #ff4081); }
-  100% { transform: translate(0, 0); }
+  0% {
+    transform: translate(0, 0);
+  }
+
+  40% {
+    transform: translate(-30px, 20px) scale(1.08);
+    filter: drop-shadow(0 0 12px #ff4081);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 @keyframes faintDrop {
-  0% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(90px); opacity: 0; }
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(90px);
+    opacity: 0;
+  }
 }
 
 /* ── Container Layout ─────────────────────────────────────────────────────── */
@@ -306,8 +452,6 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  /* Flip to face the opposing enemy, with friendly battle perspective */
-  transform: scaleX(-1);
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.8)) brightness(0.95);
 }
 
@@ -478,9 +622,17 @@
   border-radius: 4px;
 }
 
-.hp-green { background: #00c853; }
-.hp-yellow { background: #ffd600; }
-.hp-red { background: #ff1744; }
+.hp-green {
+  background: #00c853;
+}
+
+.hp-yellow {
+  background: #ffd600;
+}
+
+.hp-red {
+  background: #ff1744;
+}
 
 .hud-hp-numbers {
   text-align: right;

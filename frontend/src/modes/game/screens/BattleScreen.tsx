@@ -3,13 +3,13 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import backgroundImg from "../assets/images/background.jpg";
 import characterImg from "../assets/images/characters/1.png";
 import MissionGuideModal from "../components/MissionGuideModal.jsx";
-import { CHARACTERS, getCharacterById } from "../data/characters.js";
+import { getCharacterById } from "../data/characters.js";
 import {
   completeMissionTask,
   loadMissionProgress,
   recordAlienDefeated,
 } from "../data/missions.js";
-import { loadSavedProgress, markCreatureScanned } from "../../map/game/marsModel.js";
+import { loadSavedProgress } from "../../map/game/marsModel.js";
 import "./BattleScreen.css";
 
 interface Move {
@@ -455,21 +455,6 @@ export default function BattleScreen() {
     );
   };
 
-  const handleNextMissionBattle = () => {
-    const nextId = (enemyCreature.id % CHARACTERS.length) + 1;
-    const progress = loadSavedProgress();
-    const nextSlot = Math.max(0, progress.creatureOrder.indexOf(nextId));
-    markCreatureScanned(nextSlot, nextId);
-    navigate(`/battle?characterId=${nextId}&slot=${nextSlot}`, {
-      replace: true,
-      state: {
-        fromMap: true,
-        characterId: nextId,
-        slot: nextSlot,
-      },
-    });
-  };
-
   // HP Color utility
   const getHpColorClass = (current: number, max: number) => {
     const ratio = current / max;
@@ -760,30 +745,18 @@ export default function BattleScreen() {
               <button
                 type="button"
                 className="battle-end-btn"
-                onClick={() => setShowMissionGuide(true)}
-              >
-                📋 MISSION GUIDE ({missionProgress.completedMissions.length}/6)
-              </button>
-              <button
-                type="button"
-                className="battle-end-btn"
-                onClick={handleNextMissionBattle}
-              >
-                NEXT MISSION ALIEN →
-              </button>
-              <button
-                type="button"
-                className="battle-end-btn"
-                onClick={handleResetBattle}
-              >
-                REMATCH
-              </button>
-              <button
-                type="button"
-                className="battle-end-btn"
                 onClick={() => navigate("/map")}
               >
-                RETURN TO MAP
+                {isCurrentMissionRepaired
+                  ? "← CONTINUE ON MARS MAP"
+                  : `← RETURN TO MAP & FIX ${enemyCreature.targetObject.toUpperCase()}`}
+              </button>
+              <button
+                type="button"
+                className="battle-end-btn"
+                onClick={() => setShowMissionGuide(true)}
+              >
+                📋 MISSION LOG ({missionProgress.completedMissions.length}/6)
               </button>
             </div>
           </div>

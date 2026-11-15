@@ -532,27 +532,174 @@ function drawPerseveranceRover(ctx, x, y, allScanned, time, reducedMotion) {
   ctx.restore()
 }
 
-// Creature sprite scale reduced proportionally (3 -> 2)
-function drawTrailCreature(ctx, creature, isTarget, isNearby, time, reducedMotion) {
-  const { x, y, scanned, feasting, facing, characterId, name, slot } = creature
-  const sprite = scanned ? characterSprites.get(characterId) : silhouetteSprites.get(characterId)
+/**
+ * Draws the Mission Crate / Repair Target for Missions 1..6 on the pixel map.
+ */
+function drawMissionCrate(ctx, creature, isNearbyCrate, time, reducedMotion) {
+  const {
+    crateX: x,
+    crateY: y,
+    missionNumber,
+    targetObject,
+    scrapName,
+    scrapObtained,
+    taskCompleted,
+    unlocked,
+  } = creature
 
-  if (!scanned) {
+  if (!unlocked) return
+
+  const readyToRepair = scrapObtained && !taskCompleted
+  const pulse = reducedMotion ? 0.5 : (Math.sin(time * 4.2 + missionNumber) + 1) * 0.5
+
+  ctx.save()
+  ctx.translate(Math.round(x), Math.round(y))
+
+  // Ground shadow
+  ctx.fillStyle = '#24160f70'
+  ctx.beginPath()
+  ctx.ellipse(1, 5, 16, 7, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Beacon ring when ready to repair with obtained scrap
+  if (readyToRepair || isNearbyCrate) {
+    ctx.strokeStyle = taskCompleted
+      ? 'rgba(56, 239, 125, 0.65)'
+      : readyToRepair
+      ? `rgba(105, 240, 174, ${0.5 + pulse * 0.45})`
+      : 'rgba(255, 214, 130, 0.55)'
+    ctx.fillStyle = readyToRepair
+      ? 'rgba(56, 239, 125, 0.14)'
+      : 'rgba(255, 200, 110, 0.08)'
+    ctx.lineWidth = isNearbyCrate ? 1.8 : 1.3
+    ctx.beginPath()
+    ctx.ellipse(0, 1, 18 + pulse * 4, 9 + pulse * 2, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+  }
+
+  // Crate body
+  ctx.fillStyle = taskCompleted ? '#223d33' : readyToRepair ? '#2d3748' : '#3a2b28'
+  ctx.strokeStyle = taskCompleted ? '#38ef7d' : readyToRepair ? '#ffd166' : '#8a6f64'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.roundRect(-12, -10, 24, 15, 2.5)
+  ctx.fill()
+  ctx.stroke()
+
+  // Cross-brace / tech panel on crate
+  ctx.fillStyle = taskCompleted ? '#38ef7d' : readyToRepair ? '#ffd166' : '#ff6b4a'
+  ctx.fillRect(-8, -6, 16, 3)
+
+  ctx.fillStyle = '#141a24'
+  ctx.fillRect(-8, -1, 16, 4)
+
+  // Status LED dot
+  ctx.fillStyle = taskCompleted ? '#38ef7d' : readyToRepair ? '#7eeeff' : '#ff5252'
+  ctx.beginPath()
+  ctx.arc(6, -4.5, 1.8, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Quantum Relay / Spectro dish antenna for Missions 3, 4, 6
+  if (missionNumber === 3 || missionNumber === 4 || missionNumber === 6) {
+    ctx.strokeStyle = taskCompleted ? '#7ef2ff' : '#b8c4d0'
+    ctx.lineWidth = 1.4
+    ctx.beginPath()
+    ctx.moveTo(0, -10)
+    ctx.lineTo(0, -19)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(0, -20, 4.5, Math.PI * 0.15, Math.PI * 0.85, true)
+    ctx.stroke()
+  }
+
+  // Quantum beam to Earth when Mission 6 is completed
+  if (missionNumber === 6 && taskCompleted) {
     ctx.save()
-    const pulse = reducedMotion ? 0.5 : (Math.sin(time * 4 + slot) + 1) * 0.5
-    if (isNearby || isTarget) {
-      ctx.strokeStyle = isNearby
-        ? `rgba(255, 224, 130, ${0.55 + pulse * 0.4})`
-        : `rgba(255, 198, 112, ${0.32 + pulse * 0.3})`
-      ctx.fillStyle = isNearby ? 'rgba(255, 210, 110, 0.14)' : 'rgba(255, 184, 96, 0.07)'
-      ctx.lineWidth = isNearby ? 1.6 : 1.1
-      ctx.beginPath()
-      ctx.ellipse(x, y - 1, isNearby ? 19 + pulse * 3 : 16, isNearby ? 9 + pulse * 1.5 : 7.5, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-    }
+    const beamAlpha = 0.45 + pulse * 0.35
+    ctx.strokeStyle = `rgba(126, 238, 255, ${beamAlpha})`
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.moveTo(0, -20)
+    ctx.lineTo(0, -180)
+    ctx.stroke()
     ctx.restore()
   }
+
+  // Crate label
+  let label = `${targetObject.toUpperCase()}`
+  let borderCol = '#8a6f6488'
+  let textCol = '#ebd7c7'
+
+  if (taskCompleted) {
+    label = `✓ ${targetObject.toUpperCase()} ONLINE`
+    borderCol = '#38ef7daa'
+    textCol = '#baffd8'
+  } else if (readyToRepair) {
+    label = isNearbyCrate
+      ? `[F / CLICK] FIX ${targetObject.toUpperCase()} (${scrapName.toUpperCase()})`
+      : `🔧 FIX ${targetObject.toUpperCase()}`
+    borderCol = '#ffd166dd'
+    textCol = '#fff3b8'
+  } else if (isNearbyCrate) {
+    label = `🔒 NEEDS ${scrapName.toUpperCase()}`
+    borderCol = '#ff8a70aa'
+    textCol = '#ffd2c9'
+  }
+
+  ctx.font = readyToRepair ? '700 7.5px Manrope, sans-serif' : '600 6.8px Manrope, sans-serif'
+  const tw = ctx.measureText(label).width
+  ctx.fillStyle = '#141c24eb'
+  ctx.strokeStyle = borderCol
+  ctx.lineWidth = readyToRepair ? 1.2 : 0.8
+  ctx.beginPath()
+  ctx.roundRect(-tw / 2 - 5, -26, tw + 10, 12, 5)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = textCol
+  ctx.textAlign = 'center'
+  ctx.fillText(label, 0, -17.5)
+  ctx.textAlign = 'left'
+
+  ctx.restore()
+}
+
+// Creature sprite scale reduced proportionally (3 -> 2)
+function drawTrailCreature(ctx, creature, isTarget, isNearby, time, reducedMotion) {
+  const {
+    x,
+    y,
+    scanned,
+    unlocked,
+    defeated,
+    feasting,
+    facing,
+    characterId,
+    name,
+    missionNumber,
+    scrapName,
+    slot,
+  } = creature
+
+  // Unfold serially: do not draw locked future aliens or already-defeated aliens
+  if (!unlocked || defeated) return
+
+  const sprite = scanned ? characterSprites.get(characterId) : silhouetteSprites.get(characterId)
+
+  ctx.save()
+  const pulse = reducedMotion ? 0.5 : (Math.sin(time * 4 + slot) + 1) * 0.5
+  if (isNearby || isTarget) {
+    ctx.strokeStyle = isNearby
+      ? `rgba(255, 224, 130, ${0.55 + pulse * 0.4})`
+      : `rgba(255, 198, 112, ${0.32 + pulse * 0.3})`
+    ctx.fillStyle = isNearby ? 'rgba(255, 210, 110, 0.14)' : 'rgba(255, 184, 96, 0.07)'
+    ctx.lineWidth = isNearby ? 1.6 : 1.1
+    ctx.beginPath()
+    ctx.ellipse(x, y - 1, isNearby ? 19 + pulse * 3 : 16, isNearby ? 9 + pulse * 1.5 : 7.5, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+  }
+  ctx.restore()
 
   // Contact shadow (scale 2)
   ctx.fillStyle = '#24160f66'
@@ -604,33 +751,31 @@ function drawTrailCreature(ctx, creature, isTarget, isNearby, time, reducedMotio
   let textColor
   let borderColor
   if (scanned) {
-    label = `✓ ${name}`
-    textColor = '#c7f2d0'
-    borderColor = '#7ec89266'
+    label = isNearby
+      ? `[E / CLICK] BATTLE ${name.toUpperCase()} (${scrapName.toUpperCase()})`
+      : `⚔ ALIEN ${missionNumber}: ${name}`
+    textColor = '#ffe2a8'
+    borderColor = '#ff9e5eaa'
   } else if (isNearby) {
-    label = '[E / CLICK] SCAN'
+    label = `[E / CLICK] SCAN ALIEN ${missionNumber}`
     textColor = '#ffe7a8'
     borderColor = '#ffd275cc'
-  } else if (feasting) {
-    label = '??? · EATING SCRAP'
+  } else {
+    label = `MISSION ${missionNumber} · ALIEN ${missionNumber} (SCAN)`
     textColor = '#f5d9b0'
     borderColor = '#eab97855'
-  } else {
-    label = '??? · ROAMING'
-    textColor = '#ebd4b7'
-    borderColor = '#d8b89244'
   }
 
   ctx.save()
-  ctx.font = isNearby && !scanned ? '700 7.5px Manrope, sans-serif' : '600 7px Manrope, sans-serif'
+  ctx.font = isNearby ? '700 7.5px Manrope, sans-serif' : '600 7px Manrope, sans-serif'
   const textW = ctx.measureText(label).width
   const boxW = textW + 10
   const boxH = 13
   const boxX = x - boxW / 2
   const boxY = y + 5
-  ctx.fillStyle = isNearby && !scanned ? '#24140ee8' : '#261d19d8'
+  ctx.fillStyle = isNearby ? '#24140ee8' : '#261d19d8'
   ctx.strokeStyle = borderColor
-  ctx.lineWidth = isNearby && !scanned ? 1.2 : 0.8
+  ctx.lineWidth = isNearby ? 1.2 : 0.8
   ctx.beginPath()
   ctx.roundRect(boxX, boxY, boxW, boxH, 6)
   ctx.fill()
@@ -694,13 +839,13 @@ export function renderMap(
   facing = 1,
   nearbySlot = -1,
   nearbyRecordId = null,
-  nearbySupplyId = null
+  nearbySupplyId = null,
+  nearbyCrateSlot = -1
 ) {
   const { width, height, scale, dpr } = size
   const creatureList = creatures || []
   const targetCreature = getActiveTargetCreature(creatureList)
   const allScanned = creatureList.length > 0 && !targetCreature
-  const scannedCount = creatureList.filter(c => c.scanned).length
   const collectedRecords = state.collectedRecords || []
   const collectedScrap = state.collectedScrap || []
   const collectedSupplies = state.collectedSupplies || []
@@ -782,8 +927,32 @@ export function renderMap(
     drawSupplyPickup(ctx, supply, nearbySupplyId === supply.id, time, reducedMotion)
   }
 
-  // Draw shed Perseverance scrap metal piles along the trail
+  // Always draw Crashed Drop Pod & Base Camp at CAMP
+  ctx.save()
+  ctx.fillStyle = '#363932'
+  ctx.fillRect(CAMP.x - 24, CAMP.y - 12, 48, 24)
+  ctx.fillStyle = state.beacon ? '#bbdcb3' : '#b2b5a3'
+  ctx.fillRect(CAMP.x - 19, CAMP.y - 22, 38, 18)
+  ctx.strokeStyle = '#e9dec0'
+  ctx.lineWidth = 1.6
+  ctx.beginPath()
+  ctx.moveTo(CAMP.x, CAMP.y - 22)
+  ctx.lineTo(CAMP.x, CAMP.y - 52)
+  ctx.stroke()
+  ctx.fillStyle = state.beacon ? '#69f0ae' : '#e9b27e'
+  ctx.beginPath()
+  ctx.arc(CAMP.x, CAMP.y - 54, 4, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.font = '700 8px Manrope, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#f3e4c8'
+  ctx.fillText('CRASHED DROP POD · BASE CAMP', CAMP.x, CAMP.y + 24)
+  ctx.textAlign = 'left'
+  ctx.restore()
+
+  // Draw shed scrap metal & Mission Crates along the trail
   for (const creature of creatureList) {
+    if (!creature.unlocked) continue
     const scrapItem = SCRAP_PICKUPS.find(item => item.slot === creature.slot)
     const scrapCollected = scrapItem ? collectedScrap.includes(scrapItem.id) : false
     drawRoverScrapPile(
@@ -797,6 +966,13 @@ export function renderMap(
       time,
       reducedMotion
     )
+    drawMissionCrate(
+      ctx,
+      creature,
+      nearbyCrateSlot === creature.slot,
+      time,
+      reducedMotion
+    )
   }
 
   // Draw Perseverance Rover at the end of the trail
@@ -804,7 +980,9 @@ export function renderMap(
 
   // Depth-sort creatures and astronaut by y coordinate (sprite scale = 2)
   const actors = [
-    ...creatureList.map(creature => ({ kind: 'creature', y: creature.y, creature })),
+    ...creatureList
+      .filter(creature => creature.unlocked && !creature.defeated)
+      .map(creature => ({ kind: 'creature', y: creature.y, creature })),
     { kind: 'player', y: state.player.y },
   ].sort((a, b) => a.y - b.y)
 
@@ -826,10 +1004,14 @@ export function renderMap(
 
   ctx.restore()
 
-  // Waypoint marker: locks onto the next unscanned creature eating rover scrap,
-  // and ONLY points to Perseverance once every creature has been scanned.
+  // Serial Mission Waypoint Marker:
+  // Points to the active mission's Alien (during 'scan' or 'battle' stage)
+  // OR points to the active mission's Repair Crate (during 'repair' stage)!
+  const isRepairStage = targetCreature && targetCreature.stage === 'repair'
   const waypointWorld = targetCreature
-    ? { x: targetCreature.x, y: targetCreature.y - 46 }
+    ? isRepairStage
+      ? { x: targetCreature.crateX, y: targetCreature.crateY - 34 }
+      : { x: targetCreature.x, y: targetCreature.y - 46 }
     : { x: PERSEVERANCE_ROVER.x, y: PERSEVERANCE_ROVER.y - 44 }
 
   const targetScreenX = width / 2 + (waypointWorld.x - camera.x) * scale
@@ -841,14 +1023,16 @@ export function renderMap(
   const markerX = visible ? targetScreenX : Math.max(42, Math.min(width - 42, playerX + Math.cos(direction) * 84))
   const markerY = visible ? targetScreenY : Math.max(42, Math.min(height - 52, playerY + Math.sin(direction) * 84))
 
-  const markerAccent = targetCreature ? '#ffbe64' : '#6ff0ce'
+  const markerAccent = isRepairStage ? '#69f0ae' : targetCreature ? '#ffbe64' : '#6ff0ce'
   questDiamond(ctx, markerX, markerY, 11.5, time, reducedMotion, markerAccent)
 
   const badgeText = targetCreature
-    ? (visible
-      ? `SPECIMEN ${scannedCount + 1}/${creatureList.length}`
-      : `CREATURE SIGNAL · ${scannedCount + 1}/${creatureList.length}`)
-    : (visible ? 'PERSEVERANCE' : 'PERSEVERANCE ROVER')
+    ? isRepairStage
+      ? `MISSION ${targetCreature.missionNumber}: FIX ${targetCreature.targetObject.toUpperCase()}`
+      : targetCreature.scanned
+      ? `MISSION ${targetCreature.missionNumber}: DEFEAT ${targetCreature.name.toUpperCase()}`
+      : `MISSION ${targetCreature.missionNumber}: SCAN ${targetCreature.name.toUpperCase()}`
+    : '★ ALL 6 MISSIONS COMPLETE'
 
   ctx.font = '700 10px Manrope, sans-serif'
   const badgeW = Math.max(114, ctx.measureText(badgeText).width + 20)
@@ -907,12 +1091,20 @@ export function renderMinimap(canvas, terrain, state, creatures, showLandingMark
     ctx.fillRect(point.x - 1.5, point.y - 1.5, 3, 3)
   }
 
-  // Draw creatures on radar minimap (unscanned = amber blip, scanned = green blip)
+  // Draw unlocked creatures & active repair crates on radar minimap
   for (const creature of creatureList) {
-    const point = at(creature)
-    ctx.fillStyle = creature.scanned ? '#9be3aa' : '#ffcc73'
+    if (!creature.unlocked) continue
+    const targetPt = creature.stage === 'repair'
+      ? { x: creature.crateX, y: creature.crateY }
+      : creature
+    const point = at(targetPt)
+    ctx.fillStyle = creature.taskCompleted
+      ? '#69f0ae'
+      : creature.stage === 'repair'
+      ? '#7eeeff'
+      : '#ffcc73'
     ctx.beginPath()
-    ctx.arc(point.x, point.y, creature.scanned ? 2.6 : 3.4, 0, Math.PI * 2)
+    ctx.arc(point.x, point.y, creature.taskCompleted ? 2.4 : 3.6, 0, Math.PI * 2)
     ctx.fill()
   }
 
@@ -922,7 +1114,12 @@ export function renderMinimap(canvas, terrain, state, creatures, showLandingMark
     ctx.beginPath(); ctx.arc(landing.x, landing.y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
   }
 
-  const waypointPoint = at(targetCreature || PERSEVERANCE_ROVER)
+  const activeWaypointTarget = targetCreature
+    ? targetCreature.stage === 'repair'
+      ? { x: targetCreature.crateX, y: targetCreature.crateY }
+      : targetCreature
+    : PERSEVERANCE_ROVER
+  const waypointPoint = at(activeWaypointTarget)
   const dx = waypointPoint.x - center, dy = waypointPoint.y - center, length = Math.hypot(dx, dy)
   const limit = radius - 18
   const marker = length > limit ? { x: center + dx / length * limit, y: center + dy / length * limit } : waypointPoint

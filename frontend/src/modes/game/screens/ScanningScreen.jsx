@@ -43,7 +43,7 @@ export default function ScanningScreen({ initialIndex = 0 }) {
     return initialIndex % CHARACTERS.length;
   })();
 
-  const [index, setIndex] = useState(resolvedInitialIndex);
+  const [index] = useState(resolvedInitialIndex);
   const [discovered, setDiscovered] = useState(false);
   const [scannedCount, setScannedCount] = useState(() => loadSavedProgress().scannedSlots.length);
   const [missionProgress, setMissionProgress] = useState(() => loadMissionProgress());
@@ -53,10 +53,8 @@ export default function ScanningScreen({ initialIndex = 0 }) {
 
   const handleDiscover = () => {
     setDiscovered(true);
-    if (fromMap) {
-      const updated = markCreatureScanned(paramSlot, current.id);
-      setScannedCount(updated.scannedSlots.length);
-    }
+    const updated = markCreatureScanned(paramSlot ?? current.slot, current.id);
+    setScannedCount(updated.scannedSlots.length);
   };
 
   const handleReturnToMap = () => {
@@ -66,20 +64,15 @@ export default function ScanningScreen({ initialIndex = 0 }) {
   const handleFightCreature = () => {
     const query = new URLSearchParams();
     query.set("characterId", String(current.id));
-    if (paramSlot !== null) query.set("slot", String(paramSlot));
+    query.set("slot", String(paramSlot ?? current.slot));
     navigate(`/battle?${query.toString()}`, {
       replace: true,
       state: {
         fromMap: true,
         characterId: current.id,
-        slot: paramSlot,
+        slot: paramSlot ?? current.slot,
       },
     });
-  };
-
-  const handleNext = () => {
-    setDiscovered(false);
-    setIndex((prev) => (prev + 1) % CHARACTERS.length);
   };
 
   useEffect(() => {
@@ -201,10 +194,10 @@ export default function ScanningScreen({ initialIndex = 0 }) {
           >
             <button
               type="button"
-              onClick={handleNext}
+              onClick={handleReturnToMap}
               style={{ ...PILL_BUTTON_STYLE, position: "static" }}
             >
-              Next Alien ({index + 1}/{CHARACTERS.length}) →
+              ← Return to Mars Map
             </button>
             <button
               type="button"

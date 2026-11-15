@@ -482,6 +482,8 @@ export default function MissionGuideModal({
 
         <div className="zr-mission-list">
           {CHARACTERS.map((char) => {
+            const isUnlocked =
+              char.id === 1 || missionProgress.completedMissions.includes(char.id - 1);
             const isScanned =
               scannedCharIds.includes(char.id) ||
               missionProgress.defeatedAliens.includes(char.id) ||
@@ -496,6 +498,7 @@ export default function MissionGuideModal({
                 className={`zr-mission-card${
                   isCompleted ? " is-completed" : isHighlighted ? " is-active" : ""
                 }`}
+                style={{ opacity: isUnlocked ? 1 : 0.62 }}
               >
                 <div className="zr-mission-card-top">
                   <div className="zr-mission-avatar">
@@ -520,9 +523,11 @@ export default function MissionGuideModal({
                       >
                         {isCompleted
                           ? "✓ TASK REPAIRED"
+                          : !isUnlocked
+                          ? `🔒 COMPLETE MISSION ${char.id - 1} FIRST`
                           : hasScrap
                           ? `⚙ ${char.scrapName.toUpperCase()} READY`
-                          : "⚔ DEFEAT ALIEN FOR SCRAP"}
+                          : "⚔ ACTIVE MISSION"}
                       </span>
                     </div>
                     <h3 className="zr-mission-card-title">
@@ -547,39 +552,54 @@ export default function MissionGuideModal({
                 </ul>
 
                 <div className="zr-mission-actions">
-                  <button
-                    type="button"
-                    className="zr-m-btn"
-                    onClick={() => handleScanMissionAlien(char)}
-                  >
-                    {isScanned ? "✦ Re-Scan Alien" : "✦ Scan Alien"}
-                  </button>
-                  <button
-                    type="button"
-                    className="zr-m-btn is-battle"
-                    onClick={() => handleBattleMissionAlien(char)}
-                  >
-                    ⚔ Battle {char.name}
-                  </button>
-
-                  {hasScrap && !isCompleted && (
-                    <button
-                      type="button"
-                      className="zr-m-btn is-repair"
-                      onClick={() => handleRepairTask(char)}
-                    >
-                      🔧 Use {char.scrapName} → {char.taskActionLabel}
+                  {!isUnlocked ? (
+                    <button type="button" className="zr-m-btn" disabled>
+                      🔒 Unlocks after Mission {char.id - 1} is completed
                     </button>
-                  )}
+                  ) : (
+                    <>
+                      {!hasScrap && !isCompleted && (
+                        <>
+                          <button
+                            type="button"
+                            className="zr-m-btn"
+                            onClick={() => handleScanMissionAlien(char)}
+                          >
+                            {isScanned ? "✦ Re-Scan Alien" : "✦ Scan Alien"}
+                          </button>
+                          <button
+                            type="button"
+                            className="zr-m-btn is-battle"
+                            disabled={!isScanned}
+                            onClick={() => handleBattleMissionAlien(char)}
+                          >
+                            {isScanned
+                              ? `⚔ Battle ${char.name}`
+                              : "🔒 Scan on Map First"}
+                          </button>
+                        </>
+                      )}
 
-                  {isCompleted && (
-                    <button
-                      type="button"
-                      className="zr-m-btn is-repair"
-                      disabled
-                    >
-                      ✓ {char.targetObject} Repaired ({char.systemEffectLabel})
-                    </button>
+                      {hasScrap && !isCompleted && (
+                        <button
+                          type="button"
+                          className="zr-m-btn is-repair"
+                          onClick={() => handleRepairTask(char)}
+                        >
+                          🔧 Use {char.scrapName} → {char.taskActionLabel}
+                        </button>
+                      )}
+
+                      {isCompleted && (
+                        <button
+                          type="button"
+                          className="zr-m-btn is-repair"
+                          disabled
+                        >
+                          ✓ {char.targetObject} Repaired ({char.systemEffectLabel})
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </article>

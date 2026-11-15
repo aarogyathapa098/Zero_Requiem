@@ -25,6 +25,7 @@ export const CHARACTERS = MISSIONS.map((mission) => {
   const sprite = SPRITES.find((item) => item.id === mission.characterId) || SPRITES[0];
   return {
     id: mission.characterId,
+    slot: mission.slot,
     code: mission.code,
     name: mission.alienName,
     alienNumber: mission.alienNumber,
@@ -39,7 +40,11 @@ export const CHARACTERS = MISSIONS.map((mission) => {
     taskActionLabel: mission.taskActionLabel,
     taskDescription: mission.taskDescription,
     systemEffectLabel: mission.systemEffectLabel,
+    arrivalBriefing: mission.arrivalBriefing,
+    completionStory: mission.completionStory,
     locationTag: mission.locationTag,
+    alienPos: mission.alienPos,
+    cratePos: mission.cratePos,
     enemyLevel: mission.enemyLevel,
     enemyMaxHp: mission.enemyMaxHp,
     enemySignatureMove: mission.enemySignatureMove,

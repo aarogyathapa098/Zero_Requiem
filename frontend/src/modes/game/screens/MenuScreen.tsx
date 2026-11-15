@@ -4,7 +4,6 @@ import * as THREE from "three";
 import logoUrl from "../../../assets/zero-requiem-logo.png";
 import marsPhotoUrl from "../../../assets/mars-surface.jpg";
 import { resetSavedProgress } from "../../map/game/marsModel.js";
-import MissionGuideModal from "../components/MissionGuideModal.jsx";
 import { resetMissionProgress } from "../data/missions.js";
 import "./MenuScreen.css";
 
@@ -15,7 +14,7 @@ interface OverlayContent {
 
 const ABOUT_OVERLAY: OverlayContent = {
   title: "About",
-  body: "Project: Zero Requiem is set in the S.U.N.A. IV system. Defeat the 6 Martian anomalies, salvage their critical scrap modules, repair the failing life-support & Perseverance systems, and broadcast the final transmission back to Earth.",
+  body: "Project: Zero Requiem is set in the S.U.N.A. IV system. Survive the Martian surface, repair your failing life-support systems, uncover why previous crews went dark, and broadcast the final transmission back to Earth.",
 };
 
 export default function MenuScreen() {
@@ -26,7 +25,6 @@ export default function MenuScreen() {
   const leaveTimerRef = useRef<number | null>(null);
 
   const [overlay, setOverlay] = useState<OverlayContent | null>(null);
-  const [showMissions, setShowMissions] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
   const handlePlay = () => {
@@ -584,20 +582,12 @@ export default function MenuScreen() {
           <button type="button" onClick={handlePlay}>
             Play
           </button>
-          <button type="button" onClick={() => setShowMissions(true)}>
-            Missions
-          </button>
           <button type="button" onClick={() => setOverlay(ABOUT_OVERLAY)}>
             About
           </button>
         </nav>
         <div className="menu-brand">S.U.N.A&nbsp;IV</div>
       </div>
-
-      <MissionGuideModal
-        isOpen={showMissions}
-        onClose={() => setShowMissions(false)}
-      />
 
       {overlay && (
         <div

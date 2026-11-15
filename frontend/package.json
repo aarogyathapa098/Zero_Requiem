@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "preinstall": "node -e \"const fs=require('fs');if(!fs.existsSync('node_modules/cesium')||(process.platform==='linux'&&!fs.existsSync('node_modules/@rolldown/binding-linux-x64-gnu'))){fs.rmSync('node_modules',{recursive:true,force:true})}\"",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b --force && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --test src/shared/marsGrid/marsGrid.test.js src/modes/map/scripts/camera.test.js src/shared/pathPlanning/tests/astar.test.js src/shared/pathPlanning/tests/dijkstra.test.js src/shared/pathPlanning/tests/costModel.test.js src/shared/pathPlanning/tests/pathValidation.test.js src/shared/pathPlanning/tests/travelTime.test.js src/shared/pathPlanning/tests/recommendation.test.js src/shared/environment/tests/weather.test.js",

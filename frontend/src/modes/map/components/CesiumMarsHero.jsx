@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
-import { SITES } from '../game/marsModel'
+import { JEZERO_SITES } from '../data/jezeroSites'
 import { MARS_LANDMARKS, SCIENCE_LAYERS } from '../data/marsLandmarks'
 import { MARS_IMAGERY } from '../data/marsImagery'
 import MARS_ROUTES from '../data/marsRoutes.js'
@@ -158,8 +158,8 @@ export default function CesiumMarsHero({
           })
         })
 
-        // Add Jezero expedition traverse waypoints
-        SITES.forEach(site => {
+        // Add mapped Jezero science and sampling waypoints.
+        JEZERO_SITES.forEach(site => {
           const position = Cesium.Cartesian3.fromDegrees(site.longitude, site.latitude, site.elevation + 20, Cesium.Ellipsoid.MARS)
           const show = surfaceVisibility(position)
           viewer.entities.add({
@@ -377,7 +377,7 @@ export default function CesiumMarsHero({
   useEffect(() => {
     const viewer = viewerRef.current
     if (!viewer || !ready) return
-    SITES.forEach(site => {
+    JEZERO_SITES.forEach(site => {
       const marker = viewer.entities.getById(`traverse-${site.id}`)
       if (marker) marker.show = !activeRoute
     })

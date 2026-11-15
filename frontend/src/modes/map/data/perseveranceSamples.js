@@ -1,6 +1,6 @@
 // Collection localities from the NASA PDS Mars 2020 Initial Reports, Volume 1.
 // Coordinates locate the reported sampling area, not a survey of an individual
-// visible stone in this game's illustrative terrain. Paired tubes share a site.
+// visible stone at this map scale. Paired tubes share a site.
 export const SAMPLE_REPORT_URL = 'https://pds-geosciences.wustl.edu/missions/mars2020/Mars%202020%20Initial%20Reports%20Volume%201%20Release%202.2.pdf'
 export const SAMPLE_CATALOG_URL = 'https://science.nasa.gov/mission/mars-2020-perseverance/mars-rock-samples/'
 

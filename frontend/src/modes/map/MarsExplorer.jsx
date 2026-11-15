@@ -223,8 +223,7 @@ function RoutePanel({ route, onClose, onFit, onInspect, onOpenJezeroMap, onSelec
         : `Follow the rover’s driven path to its last published waypoint in this map snapshot. ${route.distanceKm.toFixed(1)} km recorded through sol ${route.sol}.`}</p>
       {fiction && <div className="watney-stops"><span>Ares 3<small>Acidalia Planitia</small></span><span>Mawrth Vallis</span><span>Ares 4<small>Schiaparelli</small></span></div>}
       {!fiction && <p className="route-data-date">NASA traverse snapshot downloaded 14 Nov 2026. Open NASA’s live map for newer drives.</p>}
-      {fiction ? <button className="jezero-map-cta" onClick={onFit}>Show Watney’s full journey <ArrowRight size={17} /></button>
-        : <button className="route-secondary-action" onClick={onFit}>Fit full rover route <ArrowUpRight size={16} /></button>}
+      {!fiction && <button className="route-secondary-action" onClick={onFit}>Fit full rover route <ArrowUpRight size={16} /></button>}
       {route.id === 'perseverance' && <button className="route-secondary-action" onClick={onOpenJezeroMap}>See route on 2D Jezero map <ArrowUpRight size={16} /></button>}
       <a className="source-link" href={route.missionUrl} target="_blank" rel="noreferrer">{fiction ? 'The Martian route at NASA JPL' : 'Open NASA’s live rover map'} <ArrowUpRight size={16} /></a>
       {route.id === 'curiosity' && <a className="source-link" href="https://science.nasa.gov/resource/curiositys-proposed-path-up-mount-sharp/" target="_blank" rel="noreferrer">See NASA’s 2019 proposed Mount Sharp path <ArrowUpRight size={16} /></a>}

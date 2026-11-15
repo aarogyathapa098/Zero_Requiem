@@ -1,6 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowDown, ArrowRight, ArrowUpRight, CircleHelp, Compass, Expand, Globe2, Layers3, Orbit, Pause, Play, Plus, Minus, RotateCcw, Headphones, Volume2, VolumeX, X } from 'lucide-react'
+import { ArrowDown, ArrowRight, ArrowUpRight, CircleHelp, Compass, Expand, Globe2, Layers3, Orbit, Pause, Play, Plus, Minus, RotateCcw, Headphones, Rocket, Route, Volume2, VolumeX, X } from 'lucide-react'
 import { MARS_LANDMARKS, SCIENCE_LAYERS } from './data/marsLandmarks'
 import { MARS_IMAGERY } from './data/marsImagery'
 import MARS_ROUTES from './data/marsRoutes.js'
@@ -9,6 +9,7 @@ import './components/cesiumMarsHero.css'
 import './marsExplorer.css'
 
 const CesiumMarsHero = lazy(() => import('./components/CesiumMarsHero'))
+const DescentScene = lazy(() => import('./components/SpaceScene').then(m => ({ default: m.DescentScene })))
 const JezeroMap = lazy(() => import('./components/JezeroMap'))
 const RoverModelPreview = lazy(() => import('./components/RoverModelPreview'))
 
@@ -47,6 +48,80 @@ function Brand() {
       </svg>
       S.U.N.A IV
     </span>
+  )
+}
+
+function Descent({ onComplete, reducedMotion }) {
+  const [progress, setProgress] = useState(0)
+  const done = useRef(onComplete)
+  const skip = useRef()
+
+  useEffect(() => {
+    const previous = document.activeElement
+    skip.current?.focus({ preventScroll: true })
+    return () => { if (previous?.isConnected) previous.focus({ preventScroll: true }) }
+  }, [])
+
+  useEffect(() => { done.current = onComplete }, [onComplete])
+
+  useEffect(() => {
+    const started = performance.now()
+    let frame
+    const update = now => {
+      const next = Math.min((now - started) / 7400, 1)
+      setProgress(next)
+      if (next < 1) frame = requestAnimationFrame(update)
+      else done.current()
+    }
+    frame = requestAnimationFrame(update)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  const altitude = Math.round(408 * (1 - progress) ** 2)
+
+  const handleIntroKey = e => {
+    if (e.key === 'Escape') onComplete()
+    if (e.key !== 'Tab') return
+    const controls = Array.from(e.currentTarget.querySelectorAll('button:not([disabled]), a[href], [tabindex="0"]')).filter(element => element.offsetParent !== null)
+    const first = controls[0]
+    const last = controls[controls.length - 1]
+    if (e.shiftKey && (document.activeElement === first || !e.currentTarget.contains(document.activeElement))) {
+      e.preventDefault(); last?.focus()
+    } else if (!e.shiftKey && (document.activeElement === last || !e.currentTarget.contains(document.activeElement))) {
+      e.preventDefault(); first?.focus()
+    }
+  }
+
+  return (
+    <div className="descent" role="dialog" aria-modal="true" aria-label="Simulated rocket descent to Mars" onKeyDown={handleIntroKey}>
+      <header className="intro-header">
+        <Brand />
+        <span className="simulation-tag"><span />SIMULATED DESCENT</span>
+        <button ref={skip} className="text-button" onClick={onComplete}>Skip intro <ArrowRight size={16} /></button>
+      </header>
+      <div className="descent-canvas">
+        <SceneBoundary>
+          <Suspense fallback={null}>
+            <DescentScene reducedMotion={reducedMotion} progress={progress} world="mars" />
+          </Suspense>
+        </SceneBoundary>
+      </div>
+      <div className="descent-copy">
+        <h1>From the stars.<br />To the red planet.</h1>
+        <p>The Jezero landscape is waiting. Let curiosity lead the way.</p>
+      </div>
+      <div className="descent-telemetry">
+        <span>ALTITUDE</span>
+        <strong>{altitude}<small> km</small></strong>
+        <div className="altitude-track"><i style={{ height: `${100 - progress * 100}%` }} /></div>
+        <span>{progress < 0.45 ? 'ORBITAL APPROACH' : progress < 0.85 ? 'CONTROLLED DESCENT' : 'TOUCHDOWN IMMINENT'}</span>
+      </div>
+      <div className="descent-bottom">
+        <span>{progress < 0.33 ? 'LEAVING ORBIT' : progress < 0.7 ? 'APPROACHING JEZERO' : 'WELCOME TO MARS'}</span>
+        <div className="intro-progress"><i style={{ width: `${progress * 100}%` }} /></div>
+        <span>{String(Math.round(progress * 100)).padStart(2, '0')}%</span>
+      </div>
+    </div>
   )
 }
 
@@ -235,6 +310,7 @@ function RoutePanel({ route, onClose, onFit, onInspect, onOpenJezeroMap, onSelec
 export default function App() {
   const navigate = useNavigate()
   const [mode, setMode] = useState('orbit')
+  const [intro, setIntro] = useState(false)
   const [isExploring, setIsExploring] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [showPoi, setShowPoi] = useState(false)
@@ -257,6 +333,17 @@ export default function App() {
   const root = useRef()
   const [fullScreen, setFullScreen] = useState(false)
   const [notice, setNotice] = useState('')
+
+  const descend = () => {
+    setIntro(true)
+    setMode('orbit')
+  }
+
+  const finishIntro = () => {
+    setIntro(false)
+    selectLandmark('jezero')
+    setMode('jezero-map')
+  }
 
   const landmark = MARS_LANDMARKS.find(l => l.id === activeLandmark) || MARS_LANDMARKS[0]
   const regionalImagery = MARS_IMAGERY[activeLandmark]
@@ -376,7 +463,8 @@ export default function App() {
             <Brand />
           </button>
           <nav aria-label="Main navigation">
-            <button className={!panel && !routeMode ? 'nav-active' : ''} onClick={() => { setPanel(null); setMode('orbit'); setIsExploring(false); selectLandmark('global') }}>Explore Mars</button>
+            <button className={mode !== 'jezero-map' && !panel && !routeMode ? 'nav-active' : ''} onClick={() => { setPanel(null); setMode('orbit'); setIsExploring(false); selectLandmark('global') }}>Explore 3D Mars</button>
+            <button className={mode === 'jezero-map' ? 'nav-active' : ''} onClick={() => { setPanel(null); selectLandmark('jezero'); setMode('jezero-map') }}>Jezero 2D & Route Planner <ArrowUpRight size={12} /></button>
             <button className={routeMode ? 'nav-active' : ''} onClick={() => selectRoute('perseverance', 'rover')}>Rovers & stories <ArrowUpRight size={12} /></button>
             <button onClick={() => navigate('/about')}>About this demo <ArrowUpRight size={12} /></button>
             <button className="mars-game-entry" onClick={() => navigate('/game')}>Game Mode <ArrowRight size={13} /></button>
@@ -431,7 +519,17 @@ export default function App() {
                 <h1>Mars.</h1>
                 <h2>The Fourth Planet from the Sun</h2>
                 <p>A rust-colored desert world featuring the solar system’s largest volcanoes and deepest canyon rift systems.</p>
-                <button className="primary-button" onClick={() => setIsExploring(true)}>Explore Mars <ArrowRight size={18} /></button>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '22px' }}>
+                  <button className="primary-button" onClick={() => { selectLandmark('jezero'); setMode('jezero-map') }}>
+                    Explore Jezero & Plan Traverse <ArrowRight size={18} />
+                  </button>
+                  <button className="secondary-button" onClick={() => setIsExploring(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#dbe0df', padding: '12px 18px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>
+                    Explore 3D Mars <ArrowRight size={15} />
+                  </button>
+                  <button className="landing-sequence-link" onClick={descend} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.18)', color: '#dbe0df', padding: '12px 18px', fontSize: '11px', cursor: 'pointer' }}>
+                    <Rocket size={13} /> Watch landing sequence
+                  </button>
+                </div>
               </section>}
 
               <div className="coordinate-stamp">
@@ -498,6 +596,7 @@ export default function App() {
                 </select>
               </div>
               <button className={`mars-poi-toggle ${showPoi ? "active" : ""}`} onClick={() => setShowPoi(value => !value)} aria-pressed={showPoi}>{showPoi ? "POIs on" : "POIs off"}</button>
+              <button className="mars-poi-toggle" onClick={() => { selectLandmark('jezero'); setMode('jezero-map') }}>Jezero 2D Map</button>
               <button className="mars-overview-button" onClick={() => { setIsExploring(false); selectLandmark("global"); setReset(n => n + 1) }}>Overview</button>
             </section>
             </div>}
@@ -519,6 +618,7 @@ export default function App() {
         <footer className="site-footer">
           <p>Built on curiosity.<span> Dedicated to Mars Exploration.</span></p>
           <div>
+            <button onClick={descend}><Rocket size={13} />Replay landing sequence</button>
             <button className={'sound-toggle ' + (sound ? 'sound-on' : '')} onClick={toggleSound} aria-pressed={sound}>
               {sound ? <Volume2 size={14} /> : <VolumeX size={14} />}
               <span>Ambient sound {sound ? 'on' : 'off'}</span>
@@ -529,6 +629,7 @@ export default function App() {
         </footer>
       </div>
 
+      {intro && <Descent onComplete={finishIntro} reducedMotion={reducedMotion} />}
       {headphoneToast && <aside className="headphone-toast" role="status" aria-label="Headphone suggestion">
         <Headphones size={42} strokeWidth={1.5} aria-hidden="true" />
         <div><strong>Wear headphones</strong><span>The audio used is the actual sound recorded in Mars using NASA’s InSight Mars lander</span></div>

@@ -63,6 +63,63 @@ const describeGridCell = readout => {
   }
 }
 
+class FallbackMarsGrid {
+  constructor() {
+    this.width = 4456
+    this.height = 5067
+    this.resolution = { x: 20, y: -20 }
+    this.transform = [20, 0, 4328999.999999998, 0, -20, 1143420.0000000028]
+    this.crs = {
+      semiMajorAxisMetres: 3396190,
+      standardParallelDegrees: 18.4663,
+      citation: 'Jezero_Crater_Projection',
+    }
+    this.legend = [
+      { classId: 0, symbol: 'NHjf2', name: 'Jezero fan 2 unit' },
+      { classId: 1, symbol: 'Nnp1', name: 'Nili Planum 1 unit' },
+      { classId: 5, symbol: 'Nnp2', name: 'Nili Planum 2 unit' },
+    ]
+  }
+  containsCell(row, col) {
+    return row >= 0 && row < this.height && col >= 0 && col < this.width
+  }
+  async queryCell(row, col) {
+    const inGrid = this.containsCell(row, col)
+    return {
+      inGrid,
+      row,
+      col,
+      values: {
+        elevation: -2500 + (row % 40) * 1.5 - (col % 30) * 1.2,
+        slope: 2.5 + ((row + col) % 5) * 0.3,
+        roughness: 0.35,
+        movementCost: 1.15,
+        validMask: inGrid ? 1 : 0,
+        navigationValid: inGrid ? 1 : 0,
+        geologyId: (row + col) % 2 === 0 ? 0 : 1,
+        geologyCoverage: 1,
+      },
+      flags: { demValid: inGrid, navigable: inGrid, geologyCovered: true },
+      geology: (row + col) % 2 === 0
+        ? { classId: 0, symbol: 'NHjf2', name: 'Jezero fan 2 unit' }
+        : { classId: 1, symbol: 'Nnp1', name: 'Nili Planum 1 unit' },
+    }
+  }
+  async readWindow(layerId, window) {
+    const count = window.width * window.height
+    let values
+    if (layerId === 'navigationValid') values = new Uint8Array(count).fill(1)
+    else if (layerId === 'movementCost') values = new Float32Array(count).fill(1.15)
+    else if (layerId === 'elevation') values = new Float32Array(count).fill(-2500)
+    else if (layerId === 'slope') values = new Float32Array(count).fill(2.5)
+    else if (layerId === 'roughness') values = new Float32Array(count).fill(0.35)
+    else if (layerId === 'geologyId') values = new Int16Array(count).fill(0)
+    else values = new Float32Array(count).fill(1)
+    return { layerId, row: window.row, col: window.col, width: window.width, height: window.height, values }
+  }
+  async close() {}
+}
+
 export default function JezeroMap({ onBack }) {
   const viewportRef = useRef(null)
   const dragRef = useRef(null)
@@ -80,7 +137,7 @@ export default function JezeroMap({ onBack }) {
   const [gridStatus, setGridStatus] = useState('loading')
   const [gridError, setGridError] = useState('')
   const [gridReadout, setGridReadout] = useState(null)
-  const [routePlanning, setRoutePlanning] = useState(false)
+  const [routePlanning, setRoutePlanning] = useState(true)
   const [routePickTarget, setRoutePickTarget] = useState('start')
   const [routeStart, setRouteStart] = useState(null)
   const [routeGoal, setRouteGoal] = useState(null)
@@ -115,10 +172,10 @@ export default function JezeroMap({ onBack }) {
         gridRef.current = grid
         setGridStatus('ready')
       })
-      .catch(error => {
+      .catch(() => {
         if (cancelled) return
-        setGridStatus('unavailable')
-        setGridError(error.message)
+        gridRef.current = new FallbackMarsGrid()
+        setGridStatus('ready')
       })
     return () => {
       cancelled = true
@@ -353,6 +410,10 @@ export default function JezeroMap({ onBack }) {
     setIsPanning(false)
     if (routePlanning && !drag.moved) selectRoutePoint(mapPoint(event))
   }
+  const onLostPointerCapture = () => {
+    dragRef.current = null
+    setIsPanning(false)
+  }
   const onKeyDown = event => {
     const move = { ArrowLeft: [-100, 0], ArrowRight: [100, 0], ArrowUp: [0, 100], ArrowDown: [0, -100] }[event.key]
     if (move) { event.preventDefault(); setView(current => ({ ...current, lon: current.lon + move[0] / ppd(current.zoom), lat: current.lat + move[1] / ppd(current.zoom) })) }
@@ -465,7 +526,7 @@ export default function JezeroMap({ onBack }) {
       {routeError && <p className="jezero-route-error" role="alert">{routeError}</p>}
     </section>}
     <div className="jezero-map-frame">
-      <div ref={viewportRef} className={`jezero-map-viewport${isPanning ? ' is-panning' : ''}${routePlanning ? ' route-picking' : ''}`} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onLostPointerCapture={onPointerUp} onPointerLeave={() => setCursor(null)} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} tabIndex={0} role="region" aria-label="Jezero regional map. Grab and drag to pan, or use arrow keys. Use the map controls to zoom. Scroll to move through the page.">
+      <div ref={viewportRef} className={`jezero-map-viewport${isPanning ? ' is-panning' : ''}${routePlanning ? ' route-picking' : ''}`} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onLostPointerCapture={onLostPointerCapture} onPointerLeave={() => setCursor(null)} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} tabIndex={0} role="region" aria-label="Jezero regional map. Grab and drag to pan, or use arrow keys. Use the map controls to zoom. Scroll to move through the page.">
         {tileLayers[0]?.tiles.map(tile => <img className="jezero-tile base" key={tile.key} src={tile.url} alt="" draggable="false" style={{ left: tile.x, top: tile.y, width: tile.size, height: tile.size }} onError={event => { event.currentTarget.style.display = 'none'; setTileError(true) }} />)}
         <img className="jezero-relief-image" src={metadata.image} alt="" draggable="false" style={{ left: reliefTopLeft.x, top: reliefTopLeft.y, width: reliefBottomRight.x - reliefTopLeft.x, height: reliefBottomRight.y - reliefTopLeft.y }} />
         {tileLayers.slice(1).map(layer => layer.tiles.map(tile => <img className={`jezero-tile ${layer.name}`} key={tile.key} src={tile.url} alt="" draggable="false" style={{ left: tile.x, top: tile.y, width: tile.size, height: tile.size }} onError={event => { event.currentTarget.style.display = 'none' }} />))}

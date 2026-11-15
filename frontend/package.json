@@ -8,8 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test src/shared/marsGrid/marsGrid.test.js src/modes/map/scripts/camera.test.js",
+    "test": "node --test src/shared/marsGrid/marsGrid.test.js src/modes/map/scripts/camera.test.js src/shared/pathPlanning/tests/astar.test.js src/shared/pathPlanning/tests/dijkstra.test.js src/shared/pathPlanning/tests/costModel.test.js src/shared/pathPlanning/tests/pathValidation.test.js",
     "test:grid": "node --test src/shared/marsGrid/marsGrid.test.js",
+    "test:paths": "node --test src/shared/pathPlanning/tests/astar.test.js src/shared/pathPlanning/tests/dijkstra.test.js src/shared/pathPlanning/tests/costModel.test.js src/shared/pathPlanning/tests/pathValidation.test.js",
+    "benchmark:paths": "node scripts/benchmark-path-planning.mjs",
     "validate:grid": "node scripts/validate-mars-grid.mjs"
   },
   "dependencies": {

@@ -9,7 +9,7 @@
 .jezero-map-source strong{font-size:19px;font-weight:600}
 .jezero-map-source small{font-size:9px;color:#abb4b8}
 .jezero-map-frame{border:1px solid #ffffff2b;background:#0c1115}
-.jezero-map-viewport{height:min(68svh,730px);min-height:450px;position:relative;overflow:hidden;touch-action:none;cursor:grab;background:#151a1d}
+.jezero-map-viewport{height:min(68svh,730px);min-height:450px;position:relative;overflow:hidden;touch-action:pan-y;cursor:grab;background:#151a1d}
 .jezero-map-viewport:active{cursor:grabbing}
 .jezero-map-viewport>img{position:absolute;left:0;top:0;width:4456px;height:5067px;max-width:none;transform-origin:top left;user-select:none;pointer-events:none;image-rendering:auto}
 .jezero-map-viewport button{cursor:pointer}

@@ -12,6 +12,8 @@
 .about-content h1{font-size:clamp(42px,6vw,82px);line-height:1.05;letter-spacing:-.04em;margin:85px 0 24px;max-width:840px}
 .about-lead{font-size:clamp(16px,2vw,21px);line-height:1.6;color:#c7d0d3;max-width:740px;margin-bottom:65px}
 .about-content section{display:grid;grid-template-columns:32px 1fr;gap:28px;padding:36px 0;border-top:1px solid #ffffff28}
+.about-content .about-sources{grid-template-columns:minmax(0,1fr)}
+.about-sources>div{min-width:0}
 .about-content section>svg{color:#f2a477;margin-top:5px}
 .about-content h2{font-size:clamp(21px,2.5vw,30px);line-height:1.2;margin:0 0 15px}
 .about-content section p{font-size:15px;line-height:1.75;color:#c7d0d3;max-width:740px}

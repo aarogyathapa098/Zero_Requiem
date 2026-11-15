@@ -283,9 +283,9 @@ export default function App() {
   }
 
   useEffect(() => {
-    document.body.classList.add('mars-scroll-lock')
+    document.body.classList.toggle('mars-scroll-lock', mode !== 'jezero-map')
     return () => document.body.classList.remove('mars-scroll-lock')
-  }, [])
+  }, [mode])
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -368,7 +368,7 @@ export default function App() {
   }
 
   return (
-    <div className="app mars-landing-app" ref={root} style={{ '--world-color': '#eda179' }}>
+    <div className={'app mars-landing-app' + (mode === 'jezero-map' ? ' is-jezero-view' : '')} ref={root} style={{ '--world-color': '#eda179' }}>
       <div className="experience">
         <a className="skip-link" href="#explorer">Skip to explorer</a>
         <header className="site-header">
